@@ -26,7 +26,7 @@ public class ProjectManager {
         return t;
     }
 
-    // ✅ Menünün ihtiyacı: projeleri gör
+  
     public Collection<Project> getAllProjects() {
         return Collections.unmodifiableCollection(projects.values());
     }
@@ -43,7 +43,7 @@ public class ProjectManager {
         return t;
     }
 
-    // ✅ ID ile atama (menü kolaylığı)
+    
     public void assignTaskToProject(String taskId, String projectId) {
         Task task = getTaskById(taskId);
         Project project = getProjectById(projectId);
@@ -55,7 +55,7 @@ public class ProjectManager {
         t.complete();
     }
 
-    // ✅ ID ile yaklaşan listeleme
+    
     public List<Task> listUpcomingTasks(String projectId, long withinHours) {
         Project project = getProjectById(projectId);
 
