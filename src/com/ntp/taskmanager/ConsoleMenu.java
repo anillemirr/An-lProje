@@ -32,7 +32,8 @@ public class ConsoleMenu {
             System.out.println("11) Task detay görüntüle (ID / kısa ID)");
             System.out.println("12) Task sil (ID / kısa ID)");
             System.out.println("13) Task güncelle (ID / kısa ID)");
-            System.out.println("14) Hatırlatmaları çalıştır"); 
+            System.out.println("14) Hatırlatmaları çalıştır");
+            System.out.println("15) Projede görev ara"); 
             System.out.println("0) Çıkış");
             System.out.print("Seçim: ");
 
@@ -53,7 +54,8 @@ public class ConsoleMenu {
                     case "11" -> showTaskDetails();
                     case "12" -> deleteTask();
                     case "13" -> updateTask();
-                    case "14" -> runReminders(); 
+                    case "14" -> runReminders();
+                    case "15" -> searchTasksInProject();
                     case "0" -> {
                         System.out.println("Çıkış yapıldı.");
                         return;
@@ -63,6 +65,45 @@ public class ConsoleMenu {
             } catch (Exception e) {
                 System.out.println("Hata: " + e.getMessage());
             }
+        }
+    }
+
+    private void searchTasksInProject() {
+        System.out.print("Project ID: ");
+        String projectId = sc.nextLine().trim();
+
+        System.out.print("Aranacak kelime: ");
+        String keyword = sc.nextLine().trim();
+
+        System.out.print("Açıklamada da ara? (E/H): ");
+        boolean inDesc = sc.nextLine().trim().equalsIgnoreCase("E");
+
+        System.out.println("Filtre seç:");
+        System.out.println("1) Tümü");
+        System.out.println("2) Sadece tamamlanan");
+        System.out.println("3) Sadece tamamlanmayan");
+        System.out.print("Seçim: ");
+        String f = sc.nextLine().trim();
+
+        Boolean filter = null;
+        if ("2".equals(f)) filter = true;
+        else if ("3".equals(f)) filter = false;
+
+        List<Task> result = pm.searchProjectTasks(projectId, keyword, inDesc, filter);
+        if (result.isEmpty()) {
+            System.out.println("Sonuç bulunamadı.");
+            return;
+        }
+
+        System.out.println("--- ARAMA SONUÇLARI ---");
+        for (Task t : result) {
+            String status = t.isCompleted() ? "✅" : "🟡";
+            System.out.println(status +
+                    " | ID: " + t.getId() +
+                    " | Kısa: " + t.getShortId() +
+                    " | " + t.getTitle() +
+                    " | Öncelik: " + t.getPriority().getLabel() +
+                    " | Deadline: " + t.getDeadline().getDue());
         }
     }
 

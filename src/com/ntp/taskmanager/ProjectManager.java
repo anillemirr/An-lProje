@@ -15,7 +15,7 @@ public class ProjectManager {
     private final Map<String, Project> projects = new HashMap<>();
     private final Map<String, Task> tasks = new HashMap<>();
 
-    
+    // Commit 16
     private final ReminderService reminderService = new ReminderService();
 
     /* ===================== PROJECT & TASK ===================== */
@@ -170,10 +170,57 @@ public class ProjectManager {
         return result;
     }
 
+    
+
     /**
      *
-     * @return bildirilecek görevler (console tarafı basar)
+     * @param projectId proje
+     * @param keyword aranacak kelime (title/description içinde)
+     * @param searchInDescription description içinde de ara mı?
+     * @param completedFilter null=tümü, true=tamamlanan, false=tamamlanmayan
      */
+    public List<Task> searchProjectTasks(String projectId,
+                                         String keyword,
+                                         boolean searchInDescription,
+                                         Boolean completedFilter) {
+
+        if (keyword == null || keyword.isBlank()) {
+            throw new IllegalArgumentException("Arama kelimesi boş olamaz.");
+        }
+
+        Project project = getProjectById(projectId);
+        String k = keyword.trim().toLowerCase();
+
+        List<Task> result = new ArrayList<>();
+
+        for (Task t : project.getTasks()) {
+            if (completedFilter != null && t.isCompleted() != completedFilter) continue;
+
+            boolean hitTitle = t.getTitle() != null && t.getTitle().toLowerCase().contains(k);
+            boolean hitDesc = false;
+
+            if (searchInDescription) {
+                String d = t.getDescription();
+                hitDesc = d != null && d.toLowerCase().contains(k);
+            }
+
+            if (hitTitle || hitDesc) {
+                result.add(t);
+            }
+        }
+
+        // Sıralama: Öncelik (yüksek->düşük), sonra deadline
+        result.sort(
+                Comparator.comparing(Task::getPriority, Comparator.comparingInt(Priority::getLevel))
+                        .reversed()
+                        .thenComparing(x -> x.getDeadline().getDue())
+        );
+
+        return result;
+    }
+
+    
+
     public List<Task> runReminders(String projectId, long withinMinutes) {
         Project project = getProjectById(projectId);
         return reminderService.getTasksToRemind(project.getTasks(), withinMinutes);
