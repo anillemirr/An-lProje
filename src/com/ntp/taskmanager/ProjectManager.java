@@ -15,6 +15,9 @@ public class ProjectManager {
     private final Map<String, Project> projects = new HashMap<>();
     private final Map<String, Task> tasks = new HashMap<>();
 
+    
+    private final ReminderService reminderService = new ReminderService();
+
     /* ===================== PROJECT & TASK ===================== */
 
     public Project createProject(String name) {
@@ -99,14 +102,6 @@ public class ProjectManager {
         return fullId;
     }
 
-    /**
-     *
-     * @param idOrShort Task tam ID veya kısa ID
-     * @param newTitle boş/null ise değiştirmez
-     * @param newDesc  null ise değiştirmez (boş string verirse boş yapar)
-     * @param newPriority null ise değiştirmez
-     * @param newDeadline null ise değiştirmez
-     */
     public void updateTask(String idOrShort,
                            String newTitle,
                            String newDesc,
@@ -118,15 +113,12 @@ public class ProjectManager {
         if (newTitle != null && !newTitle.isBlank()) {
             t.setTitle(newTitle.trim());
         }
-
         if (newDesc != null) {
             t.setDescription(newDesc);
         }
-
         if (newPriority != null) {
             t.setPriority(newPriority);
         }
-
         if (newDeadline != null) {
             t.getDeadline().setDue(newDeadline);
         }
@@ -176,6 +168,15 @@ public class ProjectManager {
         );
 
         return result;
+    }
+
+    /**
+     *
+     * @return bildirilecek görevler (console tarafı basar)
+     */
+    public List<Task> runReminders(String projectId, long withinMinutes) {
+        Project project = getProjectById(projectId);
+        return reminderService.getTasksToRemind(project.getTasks(), withinMinutes);
     }
 
     /* ===================== CSV EXPORT / IMPORT ===================== */

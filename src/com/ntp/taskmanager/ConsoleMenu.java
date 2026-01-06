@@ -31,7 +31,8 @@ public class ConsoleMenu {
             System.out.println("10) CSV'den görevleri yükle");
             System.out.println("11) Task detay görüntüle (ID / kısa ID)");
             System.out.println("12) Task sil (ID / kısa ID)");
-            System.out.println("13) Task güncelle (ID / kısa ID)"); 
+            System.out.println("13) Task güncelle (ID / kısa ID)");
+            System.out.println("14) Hatırlatmaları çalıştır"); 
             System.out.println("0) Çıkış");
             System.out.print("Seçim: ");
 
@@ -51,7 +52,8 @@ public class ConsoleMenu {
                     case "10" -> importCsvFromFile();
                     case "11" -> showTaskDetails();
                     case "12" -> deleteTask();
-                    case "13" -> updateTask(); // ✅ Commit 15
+                    case "13" -> updateTask();
+                    case "14" -> runReminders(); 
                     case "0" -> {
                         System.out.println("Çıkış yapıldı.");
                         return;
@@ -61,6 +63,25 @@ public class ConsoleMenu {
             } catch (Exception e) {
                 System.out.println("Hata: " + e.getMessage());
             }
+        }
+    }
+
+    private void runReminders() {
+        System.out.print("Project ID: ");
+        String projectId = sc.nextLine().trim();
+
+        System.out.print("Kaç dakika içinde yaklaşanlar? (örn: 60): ");
+        long mins = Long.parseLong(sc.nextLine().trim());
+
+        List<Task> remind = pm.runReminders(projectId, mins);
+        if (remind.isEmpty()) {
+            System.out.println("Hatırlatma yok.");
+            return;
+        }
+
+        System.out.println("--- HATIRLATMALAR ---");
+        for (Task t : remind) {
+            System.out.println("ID: " + t.getId() + " | Kısa: " + t.getShortId() + " | " + Notification.upcoming(t));
         }
     }
 
@@ -95,7 +116,7 @@ public class ConsoleMenu {
 
         pm.updateTask(idOrShort,
                 newTitle == null || newTitle.isBlank() ? null : newTitle,
-                newDesc, // null değil -> açıklama değişebilir, boşsa boş olur
+                newDesc,
                 newPriority,
                 newDeadline);
 
