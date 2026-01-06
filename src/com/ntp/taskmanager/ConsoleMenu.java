@@ -33,7 +33,7 @@ public class ConsoleMenu {
             System.out.println("12) Task sil (ID / kısa ID)");
             System.out.println("13) Task güncelle (ID / kısa ID)");
             System.out.println("14) Hatırlatmaları çalıştır");
-            System.out.println("15) Projede görev ara"); 
+            System.out.println("15) Projede görev ara (TOP-N / Yaklaşan filtresi)");
             System.out.println("0) Çıkış");
             System.out.print("Seçim: ");
 
@@ -55,7 +55,7 @@ public class ConsoleMenu {
                     case "12" -> deleteTask();
                     case "13" -> updateTask();
                     case "14" -> runReminders();
-                    case "15" -> searchTasksInProject();
+                    case "15" -> searchTasksInProjectAdvanced(); 
                     case "0" -> {
                         System.out.println("Çıkış yapıldı.");
                         return;
@@ -67,8 +67,7 @@ public class ConsoleMenu {
             }
         }
     }
-
-    private void searchTasksInProject() {
+    private void searchTasksInProjectAdvanced() {
         System.out.print("Project ID: ");
         String projectId = sc.nextLine().trim();
 
@@ -89,13 +88,24 @@ public class ConsoleMenu {
         if ("2".equals(f)) filter = true;
         else if ("3".equals(f)) filter = false;
 
-        List<Task> result = pm.searchProjectTasks(projectId, keyword, inDesc, filter);
+        System.out.print("Sadece yaklaşanlar? (X saat içinde) (boş=tümü): ");
+        String up = sc.nextLine().trim();
+        Long withinHours = null;
+        if (!up.isBlank()) withinHours = Long.parseLong(up);
+
+        System.out.print("Kaç sonuç gösterilsin? (örn: 5) (boş=limit yok): ");
+        String lim = sc.nextLine().trim();
+        int limit = 0;
+        if (!lim.isBlank()) limit = Integer.parseInt(lim);
+
+        List<Task> result = pm.searchProjectTasksAdvanced(projectId, keyword, inDesc, filter, withinHours, limit);
+
         if (result.isEmpty()) {
             System.out.println("Sonuç bulunamadı.");
             return;
         }
 
-        System.out.println("--- ARAMA SONUÇLARI ---");
+        System.out.println("--- ARAMA SONUÇLARI (deadline en yakın üstte) ---");
         for (Task t : result) {
             String status = t.isCompleted() ? "✅" : "🟡";
             System.out.println(status +
@@ -144,16 +154,12 @@ public class ConsoleMenu {
         System.out.print("Yeni öncelik (DUSUK/ORTA/YUKSEK) (boş=değişmesin): ");
         String pr = sc.nextLine().trim().toUpperCase();
         Priority newPriority = null;
-        if (!pr.isBlank()) {
-            newPriority = Priority.valueOf(pr);
-        }
+        if (!pr.isBlank()) newPriority = Priority.valueOf(pr);
 
         System.out.print("Yeni deadline (yyyy-MM-dd H:mm) (boş=değişmesin): ");
         String dl = sc.nextLine().trim();
         LocalDateTime newDeadline = null;
-        if (!dl.isBlank()) {
-            newDeadline = LocalDateTime.parse(dl, fmt);
-        }
+        if (!dl.isBlank()) newDeadline = LocalDateTime.parse(dl, fmt);
 
         pm.updateTask(idOrShort,
                 newTitle == null || newTitle.isBlank() ? null : newTitle,
@@ -329,14 +335,6 @@ public class ConsoleMenu {
         System.out.println("Öncelik: " + t.getPriority().getLabel());
         System.out.println("Deadline: " + t.getDeadline().getDue());
         System.out.println("Durum: " + (t.isCompleted() ? "✅ Tamamlandı" : "🟡 Devam ediyor"));
-
-        if (t instanceof TimedTask tt) {
-            System.out.println("Tür: TimedTask");
-            System.out.println("Start: " + tt.getStart());
-            System.out.println("End: " + tt.getEnd());
-        } else {
-            System.out.println("Tür: Task");
-        }
         System.out.println("--------------");
     }
 

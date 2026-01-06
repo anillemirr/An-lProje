@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -15,7 +16,6 @@ public class ProjectManager {
     private final Map<String, Project> projects = new HashMap<>();
     private final Map<String, Task> tasks = new HashMap<>();
 
-    // Commit 16
     private final ReminderService reminderService = new ReminderService();
 
     /* ===================== PROJECT & TASK ===================== */
@@ -110,18 +110,10 @@ public class ProjectManager {
 
         Task t = getTaskByIdOrShortId(idOrShort);
 
-        if (newTitle != null && !newTitle.isBlank()) {
-            t.setTitle(newTitle.trim());
-        }
-        if (newDesc != null) {
-            t.setDescription(newDesc);
-        }
-        if (newPriority != null) {
-            t.setPriority(newPriority);
-        }
-        if (newDeadline != null) {
-            t.getDeadline().setDue(newDeadline);
-        }
+        if (newTitle != null && !newTitle.isBlank()) t.setTitle(newTitle.trim());
+        if (newDesc != null) t.setDescription(newDesc);
+        if (newPriority != null) t.setPriority(newPriority);
+        if (newDeadline != null) t.getDeadline().setDue(newDeadline);
     }
 
     /* ===================== LISTING ===================== */
@@ -133,18 +125,14 @@ public class ProjectManager {
         for (Task t : project.getTasks()) {
             if (t.isCompleted()) continue;
             if (t.getDeadline().isOverdue()) continue;
-            if (t.getDeadline().isWithinHours(withinHours)) {
-                result.add(t);
-            }
+            if (t.getDeadline().isWithinHours(withinHours)) result.add(t);
         }
 
         result.sort(
-                Comparator.comparing(Task::getPriority,
-                                Comparator.comparingInt(Priority::getLevel))
+                Comparator.comparing(Task::getPriority, Comparator.comparingInt(Priority::getLevel))
                         .reversed()
                         .thenComparing(x -> x.getDeadline().getDue())
         );
-
         return result;
     }
 
@@ -153,32 +141,17 @@ public class ProjectManager {
         List<Task> result = new ArrayList<>();
 
         for (Task t : project.getTasks()) {
-            if (completedFilter == null || t.isCompleted() == completedFilter) {
-                result.add(t);
-            }
+            if (completedFilter == null || t.isCompleted() == completedFilter) result.add(t);
         }
 
         result.sort(
                 Comparator.comparing(Task::isCompleted)
-                        .thenComparing(
-                                Comparator.comparing(Task::getPriority,
-                                        Comparator.comparingInt(Priority::getLevel)).reversed()
-                        )
+                        .thenComparing(Comparator.comparing(Task::getPriority, Comparator.comparingInt(Priority::getLevel)).reversed())
                         .thenComparing(x -> x.getDeadline().getDue())
         );
-
         return result;
     }
 
-    
-
-    /**
-     *
-     * @param projectId proje
-     * @param keyword aranacak kelime (title/description içinde)
-     * @param searchInDescription description içinde de ara mı?
-     * @param completedFilter null=tümü, true=tamamlanan, false=tamamlanmayan
-     */
     public List<Task> searchProjectTasks(String projectId,
                                          String keyword,
                                          boolean searchInDescription,
@@ -204,12 +177,9 @@ public class ProjectManager {
                 hitDesc = d != null && d.toLowerCase().contains(k);
             }
 
-            if (hitTitle || hitDesc) {
-                result.add(t);
-            }
+            if (hitTitle || hitDesc) result.add(t);
         }
 
-        // Sıralama: Öncelik (yüksek->düşük), sonra deadline
         result.sort(
                 Comparator.comparing(Task::getPriority, Comparator.comparingInt(Priority::getLevel))
                         .reversed()
@@ -219,7 +189,51 @@ public class ProjectManager {
         return result;
     }
 
-    
+    /**
+     *
+     * @param projectId proje
+     * @param keyword aranacak kelime
+     * @param searchInDescription description içinde de ara mı?
+     * @param completedFilter null=tümü, true=tamamlanan, false=tamamlanmayan
+     * @param onlyUpcomingWithinHours null ise tümü, değer verilirse sadece X saat içinde deadline olanlar
+     * @param limit sonuç limiti (<=0 ise limit yok)
+     *
+     * @return filtrelenmiş liste (deadline'a göre en yakınlar üstte)
+     */
+    public List<Task> searchProjectTasksAdvanced(String projectId,
+                                                 String keyword,
+                                                 boolean searchInDescription,
+                                                 Boolean completedFilter,
+                                                 Long onlyUpcomingWithinHours,
+                                                 int limit) {
+
+        List<Task> base = searchProjectTasks(projectId, keyword, searchInDescription, completedFilter);
+
+        LocalDateTime now = LocalDateTime.now();
+        List<Task> filtered = new ArrayList<>();
+
+        for (Task t : base) {
+            if (onlyUpcomingWithinHours == null) {
+                filtered.add(t);
+                continue;
+            }
+
+            if (t.isCompleted()) continue; // yaklaşan dediğinde completed istemeyiz
+            if (t.getDeadline().isOverdue()) continue;
+
+            long hoursLeft = Duration.between(now, t.getDeadline().getDue()).toHours();
+            if (hoursLeft >= 0 && hoursLeft <= onlyUpcomingWithinHours) {
+                filtered.add(t);
+            }
+        }
+        filtered.sort(Comparator.comparing(x -> x.getDeadline().getDue()));
+
+        if (limit > 0 && filtered.size() > limit) {
+            return new ArrayList<>(filtered.subList(0, limit));
+        }
+        return filtered;
+    }
+
 
     public List<Task> runReminders(String projectId, long withinMinutes) {
         Project project = getProjectById(projectId);
@@ -246,9 +260,7 @@ public class ProjectManager {
     }
 
     public Path exportProjectCSVToFile(String projectId, String filePath) throws IOException {
-        if (filePath == null || filePath.isBlank()) {
-            throw new IllegalArgumentException("filePath boş olamaz.");
-        }
+        if (filePath == null || filePath.isBlank()) throw new IllegalArgumentException("filePath boş olamaz.");
 
         String csv = exportProjectAsCSV(projectId);
         Path path = Path.of(filePath);
@@ -275,27 +287,20 @@ public class ProjectManager {
     }
 
     public ImportResult importTasksFromCSV(String projectId, String filePath) throws IOException {
-        if (filePath == null || filePath.isBlank()) {
-            throw new IllegalArgumentException("CSV dosya yolu boş olamaz.");
-        }
+        if (filePath == null || filePath.isBlank()) throw new IllegalArgumentException("CSV dosya yolu boş olamaz.");
 
         Project project = getProjectById(projectId);
         Path path = Path.of(filePath);
 
-        if (!Files.exists(path)) {
-            throw new IllegalArgumentException("CSV dosyası bulunamadı: " + path.toAbsolutePath());
-        }
+        if (!Files.exists(path)) throw new IllegalArgumentException("CSV dosyası bulunamadı: " + path.toAbsolutePath());
 
         Set<String> existingKeys = new HashSet<>();
-        for (Task t : project.getTasks()) {
-            existingKeys.add(makeKey(t.getTitle(), t.getDeadline().getDue()));
-        }
+        for (Task t : project.getTasks()) existingKeys.add(makeKey(t.getTitle(), t.getDeadline().getDue()));
 
         List<String> lines = Files.readAllLines(path, StandardCharsets.UTF_8);
         if (lines.isEmpty()) return new ImportResult(0, 0);
 
-        int added = 0;
-        int skipped = 0;
+        int added = 0, skipped = 0;
 
         for (int i = 1; i < lines.size(); i++) {
             String line = lines.get(i).trim();
