@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Scanner;
 
 public class ConsoleMenu {
+
     private final ProjectManager pm;
     private final Scanner sc = new Scanner(System.in);
     private final DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd H:mm");
@@ -21,14 +22,14 @@ public class ConsoleMenu {
             System.out.println("1) Proje oluştur");
             System.out.println("2) Projeleri listele");
             System.out.println("3) Görev oluştur");
-            System.out.println("4) Görevi projeye ata");
-            System.out.println("5) Görev tamamla");
+            System.out.println("4) Görevi projeye ata (ID / kısa ID)");
+            System.out.println("5) Görev tamamla (ID / kısa ID)");
             System.out.println("6) Yaklaşan görevleri listele");
             System.out.println("7) Projeyi CSV olarak yazdır");
             System.out.println("8) Projedeki tüm görevleri listele");
             System.out.println("9) CSV'yi dosyaya kaydet");
             System.out.println("10) CSV'den görevleri yükle");
-            System.out.println("11) Task detay görüntüle (ID ile)"); 
+            System.out.println("11) Task detay görüntüle (ID / kısa ID)");
             System.out.println("0) Çıkış");
             System.out.print("Seçim: ");
 
@@ -46,7 +47,7 @@ public class ConsoleMenu {
                     case "8" -> listAllProjectTasks();
                     case "9" -> exportCsvToFile();
                     case "10" -> importCsvFromFile();
-                    case "11" -> showTaskDetails(); 
+                    case "11" -> showTaskDetails();
                     case "0" -> {
                         System.out.println("Çıkış yapıldı.");
                         return;
@@ -98,28 +99,31 @@ public class ConsoleMenu {
             LocalDateTime start = readDateTime("Start (yyyy-MM-dd H:mm): ");
             LocalDateTime end = readDateTime("End (yyyy-MM-dd H:mm): ");
             TimedTask t = pm.createTimedTask(title, desc, due, pr, start, end);
-            System.out.println("TimedTask oluşturuldu. ID: " + t.getId() + " (kısa: " + t.getShortId() + ")");
+            System.out.println("TimedTask oluşturuldu.");
+            System.out.println("ID: " + t.getId() + " | Kısa ID: " + t.getShortId());
         } else {
             Task t = pm.createTask(title, desc, due, pr);
-            System.out.println("Task oluşturuldu. ID: " + t.getId() + " (kısa: " + t.getShortId() + ")");
+            System.out.println("Task oluşturuldu.");
+            System.out.println("ID: " + t.getId() + " | Kısa ID: " + t.getShortId());
         }
     }
 
     private void assignTaskToProject() {
-        System.out.print("Task ID (tam ID): ");
-        String taskId = sc.nextLine().trim();
+        System.out.print("Task ID veya kısa ID: ");
+        String taskIdOrShort = sc.nextLine().trim();
 
         System.out.print("Project ID: ");
         String projectId = sc.nextLine().trim();
 
-        pm.assignTaskToProject(taskId, projectId);
+        pm.assignTaskToProject(taskIdOrShort, projectId);
         System.out.println("Görev projeye atandı.");
     }
 
     private void completeTask() {
-        System.out.print("Tamamlanacak Task ID (tam ID): ");
-        String taskId = sc.nextLine().trim();
-        pm.completeTask(taskId);
+        System.out.print("Tamamlanacak Task ID veya kısa ID: ");
+        String taskIdOrShort = sc.nextLine().trim();
+
+        pm.completeTask(taskIdOrShort);
         System.out.println("Görev tamamlandı.");
     }
 
@@ -135,15 +139,17 @@ public class ConsoleMenu {
             System.out.println("Yaklaşan görev yok (" + hours + " saat içinde).");
             return;
         }
+
         System.out.println("--- Yaklaşan Görevler ---");
         for (Task t : upcoming) {
-            System.out.println("ID: " + t.getId() + " | " + Notification.upcoming(t));
+            System.out.println("ID: " + t.getId() + " | Kısa: " + t.getShortId() + " | " + Notification.upcoming(t));
         }
     }
 
     private void exportCsv() {
         System.out.print("Project ID: ");
         String projectId = sc.nextLine().trim();
+
         String csv = pm.exportProjectAsCSV(projectId);
         System.out.println("\n--- CSV ---");
         System.out.println(csv);
@@ -173,11 +179,12 @@ public class ConsoleMenu {
         System.out.println("--- Görevler ---");
         for (Task t : list) {
             String status = t.isCompleted() ? "✅ Tamamlandı" : "🟡 Devam ediyor";
-            System.out.println(status
-                    + " | ID: " + t.getId()
-                    + " | " + t.getTitle()
-                    + " | Öncelik: " + t.getPriority().getLabel()
-                    + " | Deadline: " + t.getDeadline().getDue());
+            System.out.println(status +
+                    " | ID: " + t.getId() +
+                    " | Kısa: " + t.getShortId() +
+                    " | " + t.getTitle() +
+                    " | Öncelik: " + t.getPriority().getLabel() +
+                    " | Deadline: " + t.getDeadline().getDue());
         }
     }
 
@@ -203,15 +210,15 @@ public class ConsoleMenu {
         System.out.println("İçe aktarma tamamlandı. Eklenen: " + result.getAdded() + " | Atlanan: " + result.getSkipped());
     }
 
-    
     private void showTaskDetails() {
-        System.out.print("Task ID (tam ID): ");
-        String taskId = sc.nextLine().trim();
+        System.out.print("Task ID veya kısa ID: ");
+        String idOrShort = sc.nextLine().trim();
 
-        Task t = pm.getTaskById(taskId);
+        Task t = pm.getTaskByIdOrShortId(idOrShort);
 
         System.out.println("\n--- TASK DETAY ---");
         System.out.println("ID: " + t.getId());
+        System.out.println("Kısa ID: " + t.getShortId());
         System.out.println("Başlık: " + t.getTitle());
         System.out.println("Açıklama: " + (t.getDescription() == null ? "" : t.getDescription()));
         System.out.println("Öncelik: " + t.getPriority().getLabel());
