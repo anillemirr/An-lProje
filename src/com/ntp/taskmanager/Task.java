@@ -5,6 +5,10 @@ import java.util.UUID;
 
 /**
  * Sistemdeki temel görev (Task) sınıfıdır.
+ *
+ * <p>
+ * Deadline ve Priority alanları kapsülleme prensibine uygun olarak private tutulmuştur.
+ * </p>
  */
 public class Task implements Completable {
 
