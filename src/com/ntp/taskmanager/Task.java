@@ -12,11 +12,6 @@ import java.util.UUID;
  * </p>
  *
  * <p>
- * Deadline ve Priority alanları kapsülleme (encapsulation)
- * prensibine uygun olarak private tutulmuştur.
- * </p>
- *
- * <p>
  * Bu sınıf {@link Completable} arayüzünü uygular.
  * </p>
  */
@@ -76,6 +71,8 @@ public class Task implements Completable {
     public void setPriority(Priority priority) {
         this.priority = Objects.requireNonNull(priority);
     }
+
+    // ===== Interface implementation =====
 
     @Override
     public void complete() {
