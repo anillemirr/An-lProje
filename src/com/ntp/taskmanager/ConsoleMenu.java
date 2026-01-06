@@ -8,7 +8,9 @@ import java.util.Scanner;
 public class ConsoleMenu {
     private final ProjectManager pm;
     private final Scanner sc = new Scanner(System.in);
-    private final DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+
+    // Esnek saat formatı: "8:00" da kabul etsin diye H:mm
+    private final DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd H:mm");
 
     public ConsoleMenu(ProjectManager pm) {
         this.pm = pm;
@@ -24,6 +26,7 @@ public class ConsoleMenu {
             System.out.println("5) Görev tamamla");
             System.out.println("6) Yaklaşan görevleri listele");
             System.out.println("7) Projeyi CSV olarak yazdır");
+            System.out.println("8) Projedeki tüm görevleri listele"); // ✅ Commit 7
             System.out.println("0) Çıkış");
             System.out.print("Seçim: ");
 
@@ -38,6 +41,7 @@ public class ConsoleMenu {
                     case "5" -> completeTask();
                     case "6" -> listUpcoming();
                     case "7" -> exportCsv();
+                    case "8" -> listAllProjectTasks(); // ✅ Commit 7
                     case "0" -> {
                         System.out.println("Çıkış yapıldı.");
                         return;
@@ -84,11 +88,11 @@ public class ConsoleMenu {
 
         Priority pr = readPriority();
 
-        LocalDateTime due = readDateTime("Deadline (yyyy-MM-dd HH:mm): ");
+        LocalDateTime due = readDateTime("Deadline (yyyy-MM-dd H:mm): ");
 
         if ("2".equals(type)) {
-            LocalDateTime start = readDateTime("Start (yyyy-MM-dd HH:mm): ");
-            LocalDateTime end = readDateTime("End (yyyy-MM-dd HH:mm): ");
+            LocalDateTime start = readDateTime("Start (yyyy-MM-dd H:mm): ");
+            LocalDateTime end = readDateTime("End (yyyy-MM-dd H:mm): ");
             TimedTask t = pm.createTimedTask(title, desc, due, pr, start, end);
             System.out.println("TimedTask oluşturuldu. ID: " + t.getId());
         } else {
@@ -141,6 +145,34 @@ public class ConsoleMenu {
         System.out.println(csv);
     }
 
+    private void listAllProjectTasks() {
+        System.out.print("Project ID: ");
+        String projectId = sc.nextLine().trim();
+
+        System.out.println("Filtre seç:");
+        System.out.println("1) Tümü");
+        System.out.println("2) Sadece tamamlanan");
+        System.out.println("3) Sadece tamamlanmayan");
+        System.out.print("Seçim: ");
+        String f = sc.nextLine().trim();
+
+        Boolean filter = null;
+        if ("2".equals(f)) filter = true;
+        else if ("3".equals(f)) filter = false;
+
+        List<Task> list = pm.listProjectTasks(projectId, filter);
+        if (list.isEmpty()) {
+            System.out.println("Görev bulunamadı.");
+            return;
+        }
+
+        System.out.println("--- Görevler ---");
+        for (Task t : list) {
+            String status = t.isCompleted() ? "✅ Tamamlandı" : "🟡 Devam ediyor";
+            System.out.println(status + " | " + t);
+        }
+    }
+
     private Priority readPriority() {
         while (true) {
             System.out.print("Öncelik (DUSUK/ORTA/YUKSEK): ");
@@ -160,7 +192,7 @@ public class ConsoleMenu {
             try {
                 return LocalDateTime.parse(input, fmt);
             } catch (Exception e) {
-                System.out.println("Format yanlış. Örnek: 2025-12-18 08:30");
+                System.out.println("Format yanlış. Örnek: 2025-12-18 8:30 veya 2025-12-18 08:30");
             }
         }
     }

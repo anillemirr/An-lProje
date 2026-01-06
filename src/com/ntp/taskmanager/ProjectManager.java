@@ -68,17 +68,51 @@ public class ProjectManager {
         List<Task> result = new ArrayList<>();
         for (Task t : project.getTasks()) {
             if (t.isCompleted()) continue;
-            if (t.getDeadline().isOverdue()) continue; // ✅ overdue filtre
+            if (t.getDeadline().isOverdue()) continue;
             if (t.getDeadline().isWithinHours(withinHours)) {
                 result.add(t);
             }
         }
 
-        // ✅ Sıralama: önce priority, sonra deadline
         result.sort(
                 Comparator.comparing(Task::getPriority,
-                                Comparator.comparingInt(Priority::getLevel)) // level: 1-2-3
+                                Comparator.comparingInt(Priority::getLevel))
                         .reversed()
+                        .thenComparing(t -> t.getDeadline().getDue())
+        );
+
+        return result;
+    }
+
+    /**
+     * completedFilter:
+     * - null  => tüm görevler
+     * - true  => sadece tamamlananlar
+     * - false => sadece tamamlanmayanlar
+     *
+     * Sıralama:
+     * 1) Tamamlanmayanlar önce
+     * 2) Öncelik (YUKSEK->DUSUK)
+     * 3) Deadline (en yakın önce)
+     */
+    public List<Task> listProjectTasks(String projectId, Boolean completedFilter) {
+        Project project = getProjectById(projectId);
+
+        List<Task> result = new ArrayList<>();
+        for (Task t : project.getTasks()) {
+            if (completedFilter == null) {
+                result.add(t);
+            } else if (t.isCompleted() == completedFilter) {
+                result.add(t);
+            }
+        }
+
+        result.sort(
+                Comparator.comparing(Task::isCompleted) // false (tamamlanmayan) önce
+                        .thenComparing(
+                                Comparator.comparing(Task::getPriority,
+                                        Comparator.comparingInt(Priority::getLevel)).reversed()
+                        )
                         .thenComparing(t -> t.getDeadline().getDue())
         );
 
