@@ -42,17 +42,13 @@ public class ProjectManager {
 
     public Project getProjectById(String projectId) {
         Project p = projects.get(projectId);
-        if (p == null) {
-            throw new IllegalArgumentException("Project not found: " + projectId);
-        }
+        if (p == null) throw new IllegalArgumentException("Project not found: " + projectId);
         return p;
     }
 
     public Task getTaskById(String taskId) {
         Task t = tasks.get(taskId);
-        if (t == null) {
-            throw new IllegalArgumentException("Task not found: " + taskId);
-        }
+        if (t == null) throw new IllegalArgumentException("Task not found: " + taskId);
         return t;
     }
 
@@ -115,18 +111,25 @@ public class ProjectManager {
 
     public String exportProjectAsCSV(String projectId) {
         Project project = getProjectById(projectId);
-        StringBuilder sb = new StringBuilder("title,priority,deadline,completed\n");
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("title,priority,deadline,completed\n");
 
         for (Task t : project.getTasks()) {
-            sb.append(escape(t.getTitle())).append(",")
-              .append(t.getPriority()).append(",")
-              .append(t.getDeadline().getDue()).append(",")
-              .append(t.isCompleted()).append("\n");
+            sb.append(CsvUtil.escape(t.getTitle())).append(",")
+              .append(CsvUtil.escape(t.getPriority().name())).append(",")
+              .append(CsvUtil.escape(t.getDeadline().getDue().toString())).append(",")
+              .append(CsvUtil.escape(Boolean.toString(t.isCompleted())))
+              .append("\n");
         }
         return sb.toString();
     }
 
     public Path exportProjectCSVToFile(String projectId, String filePath) throws IOException {
+        if (filePath == null || filePath.isBlank()) {
+            throw new IllegalArgumentException("filePath boş olamaz.");
+        }
+
         String csv = exportProjectAsCSV(projectId);
         Path path = Path.of(filePath);
 
@@ -138,32 +141,44 @@ public class ProjectManager {
         return path;
     }
 
+    /* ===================== CSV IMPORT ===================== */
 
     /**
      * CSV dosyasından görevleri okuyup belirtilen projeye ekler.
-     * Format:
+     * Beklenen kolonlar:
      * title,priority,deadline,completed
+     *
+     * <p>
+     * Not: title içinde virgül varsa tırnaklı alan desteklenir.
+     * </p>
      */
     public void importTasksFromCSV(String projectId, String filePath) throws IOException {
+        if (filePath == null || filePath.isBlank()) {
+            throw new IllegalArgumentException("CSV dosya yolu boş olamaz.");
+        }
+
         Project project = getProjectById(projectId);
         Path path = Path.of(filePath);
 
         if (!Files.exists(path)) {
-            throw new IllegalArgumentException("CSV dosyası bulunamadı.");
+            throw new IllegalArgumentException("CSV dosyası bulunamadı: " + path.toAbsolutePath());
         }
 
         List<String> lines = Files.readAllLines(path, StandardCharsets.UTF_8);
-        if (lines.size() <= 1) return; // sadece header varsa
+        if (lines.isEmpty()) return;
 
+        
         for (int i = 1; i < lines.size(); i++) {
-            String[] parts = lines.get(i).split(",");
+            String line = lines.get(i).trim();
+            if (line.isEmpty()) continue;
 
-            if (parts.length < 4) continue;
+            List<String> parts = CsvUtil.parseLine(line);
+            if (parts.size() < 4) continue;
 
-            String title = parts[0];
-            Priority priority = Priority.valueOf(parts[1]);
-            LocalDateTime deadline = LocalDateTime.parse(parts[2]);
-            boolean completed = Boolean.parseBoolean(parts[3]);
+            String title = parts.get(0);
+            Priority priority = Priority.valueOf(parts.get(1));
+            LocalDateTime deadline = LocalDateTime.parse(parts.get(2));
+            boolean completed = Boolean.parseBoolean(parts.get(3));
 
             Task task = new Task(title, "", new Deadline(deadline), priority);
             if (completed) task.complete();
@@ -171,13 +186,5 @@ public class ProjectManager {
             tasks.put(task.getId(), task);
             project.addTask(task);
         }
-    }
-
-    private String escape(String s) {
-        if (s == null) return "";
-        if (s.contains(",") || s.contains("\"")) {
-            return "\"" + s.replace("\"", "\"\"") + "\"";
-        }
-        return s;
     }
 }
