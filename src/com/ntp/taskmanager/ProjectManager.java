@@ -46,14 +46,12 @@ public class ProjectManager {
         return p;
     }
 
-    /** Tam ID ile. */
     public Task getTaskById(String taskId) {
         Task t = tasks.get(taskId);
         if (t == null) throw new IllegalArgumentException("Task not found: " + taskId);
         return t;
     }
 
-    
     public Task getTaskByIdOrShortId(String idOrShort) {
         if (idOrShort == null || idOrShort.isBlank()) {
             throw new IllegalArgumentException("Task ID boş olamaz.");
@@ -89,25 +87,49 @@ public class ProjectManager {
         t.complete();
     }
 
-    /**
-     * - Global task havuzundan siler
-     * - Tüm projelerden kaldırır
-     *
-     * @return silinen task'ın tam ID'si (log/ekrana basmak için)
-     */
     public String deleteTask(String taskIdOrShortId) {
         Task t = getTaskByIdOrShortId(taskIdOrShortId);
         String fullId = t.getId();
 
-        // tüm projelerden kaldırır
         for (Project p : projects.values()) {
             p.removeTaskById(fullId);
         }
 
-        // global havuzdan kaldırır
         tasks.remove(fullId);
-
         return fullId;
+    }
+
+    /**
+     *
+     * @param idOrShort Task tam ID veya kısa ID
+     * @param newTitle boş/null ise değiştirmez
+     * @param newDesc  null ise değiştirmez (boş string verirse boş yapar)
+     * @param newPriority null ise değiştirmez
+     * @param newDeadline null ise değiştirmez
+     */
+    public void updateTask(String idOrShort,
+                           String newTitle,
+                           String newDesc,
+                           Priority newPriority,
+                           LocalDateTime newDeadline) {
+
+        Task t = getTaskByIdOrShortId(idOrShort);
+
+        if (newTitle != null && !newTitle.isBlank()) {
+            t.setTitle(newTitle.trim());
+        }
+
+        if (newDesc != null) {
+            t.setDescription(newDesc);
+        }
+
+        if (newPriority != null) {
+            t.setPriority(newPriority);
+        }
+
+        if (newDeadline != null) {
+            t.getDeadline().setDue(newDeadline);
+        }
     }
 
     /* ===================== LISTING ===================== */
@@ -191,7 +213,6 @@ public class ProjectManager {
         return path;
     }
 
-    /** Import sonucu: kaç eklendi / kaç atlandı. */
     public static class ImportResult {
         private final int added;
         private final int skipped;
@@ -205,10 +226,6 @@ public class ProjectManager {
         public int getSkipped() { return skipped; }
     }
 
-    /**
-     * CSV dosyasından görevleri okuyup belirtilen projeye ekler.
-     * Duplicate kuralı: aynı projede aynı title + aynı deadline varsa eklemez.
-     */
     public ImportResult importTasksFromCSV(String projectId, String filePath) throws IOException {
         if (filePath == null || filePath.isBlank()) {
             throw new IllegalArgumentException("CSV dosya yolu boş olamaz.");
@@ -232,7 +249,7 @@ public class ProjectManager {
         int added = 0;
         int skipped = 0;
 
-        for (int i = 1; i < lines.size(); i++) { // header atla
+        for (int i = 1; i < lines.size(); i++) {
             String line = lines.get(i).trim();
             if (line.isEmpty()) continue;
 

@@ -30,7 +30,8 @@ public class ConsoleMenu {
             System.out.println("9) CSV'yi dosyaya kaydet");
             System.out.println("10) CSV'den görevleri yükle");
             System.out.println("11) Task detay görüntüle (ID / kısa ID)");
-            System.out.println("12) Task sil (ID / kısa ID)"); 
+            System.out.println("12) Task sil (ID / kısa ID)");
+            System.out.println("13) Task güncelle (ID / kısa ID)"); 
             System.out.println("0) Çıkış");
             System.out.print("Seçim: ");
 
@@ -49,7 +50,8 @@ public class ConsoleMenu {
                     case "9" -> exportCsvToFile();
                     case "10" -> importCsvFromFile();
                     case "11" -> showTaskDetails();
-                    case "12" -> deleteTask(); 
+                    case "12" -> deleteTask();
+                    case "13" -> updateTask(); // ✅ Commit 15
                     case "0" -> {
                         System.out.println("Çıkış yapıldı.");
                         return;
@@ -60,6 +62,45 @@ public class ConsoleMenu {
                 System.out.println("Hata: " + e.getMessage());
             }
         }
+    }
+
+    private void updateTask() {
+        System.out.print("Güncellenecek Task ID veya kısa ID: ");
+        String idOrShort = sc.nextLine().trim();
+
+        Task existing = pm.getTaskByIdOrShortId(idOrShort);
+        System.out.println("Mevcut: " + existing);
+
+        System.out.println("Boş bırakırsan aynı kalır.");
+
+        System.out.print("Yeni başlık: ");
+        String newTitle = sc.nextLine();
+
+        System.out.print("Yeni açıklama (boş bırakabilirsin): ");
+        String newDesc = sc.nextLine();
+
+        System.out.print("Yeni öncelik (DUSUK/ORTA/YUKSEK) (boş=değişmesin): ");
+        String pr = sc.nextLine().trim().toUpperCase();
+        Priority newPriority = null;
+        if (!pr.isBlank()) {
+            newPriority = Priority.valueOf(pr);
+        }
+
+        System.out.print("Yeni deadline (yyyy-MM-dd H:mm) (boş=değişmesin): ");
+        String dl = sc.nextLine().trim();
+        LocalDateTime newDeadline = null;
+        if (!dl.isBlank()) {
+            newDeadline = LocalDateTime.parse(dl, fmt);
+        }
+
+        pm.updateTask(idOrShort,
+                newTitle == null || newTitle.isBlank() ? null : newTitle,
+                newDesc, // null değil -> açıklama değişebilir, boşsa boş olur
+                newPriority,
+                newDeadline);
+
+        System.out.println("Task güncellendi.");
+        System.out.println("Yeni: " + pm.getTaskByIdOrShortId(idOrShort));
     }
 
     private void createProject() {
@@ -237,7 +278,6 @@ public class ConsoleMenu {
         System.out.println("--------------");
     }
 
-    
     private void deleteTask() {
         System.out.print("Silinecek Task ID veya kısa ID: ");
         String idOrShort = sc.nextLine().trim();
