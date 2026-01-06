@@ -9,8 +9,6 @@ import java.util.Scanner;
 public class ConsoleMenu {
     private final ProjectManager pm;
     private final Scanner sc = new Scanner(System.in);
-
-    // "8:00" da kabul etsin diye H:mm
     private final DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd H:mm");
 
     public ConsoleMenu(ProjectManager pm) {
@@ -46,7 +44,7 @@ public class ConsoleMenu {
                     case "7" -> exportCsv();
                     case "8" -> listAllProjectTasks();
                     case "9" -> exportCsvToFile();
-                    case "10" -> importCsvFromFile();
+                    case "10" -> importCsvFromFile(); 
                     case "0" -> {
                         System.out.println("Çıkış yapıldı.");
                         return;
@@ -188,6 +186,7 @@ public class ConsoleMenu {
         System.out.println("CSV kaydedildi: " + saved.toAbsolutePath());
     }
 
+    // 
     private void importCsvFromFile() throws Exception {
         System.out.print("Project ID: ");
         String projectId = sc.nextLine().trim();
@@ -195,8 +194,8 @@ public class ConsoleMenu {
         System.out.print("CSV dosya yolu: ");
         String path = sc.nextLine().trim();
 
-        pm.importTasksFromCSV(projectId, path);
-        System.out.println("CSV'den görevler başarıyla yüklendi.");
+        ProjectManager.ImportResult result = pm.importTasksFromCSV(projectId, path);
+        System.out.println("İçe aktarma tamamlandı. Eklenen: " + result.getAdded() + " | Atlanan: " + result.getSkipped());
     }
 
     private Priority readPriority() {

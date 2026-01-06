@@ -141,18 +141,37 @@ public class ProjectManager {
         return path;
     }
 
-    /* ===================== CSV IMPORT ===================== */
+    /* ===================== CSV IMPORT (COMMIT 11) ===================== */
+
+    /**
+     * Import sonucu: kaç eklendi / kaç atlandı.
+     */
+    public static class ImportResult {
+        private final int added;
+        private final int skipped;
+
+        public ImportResult(int added, int skipped) {
+            this.added = added;
+            this.skipped = skipped;
+        }
+
+        public int getAdded() { return added; }
+        public int getSkipped() { return skipped; }
+
+        @Override
+        public String toString() {
+            return "ImportResult{added=" + added + ", skipped=" + skipped + "}";
+        }
+    }
 
     /**
      * CSV dosyasından görevleri okuyup belirtilen projeye ekler.
-     * Beklenen kolonlar:
-     * title,priority,deadline,completed
+     * Duplicate kuralı:
+     * - Aynı projede aynı title + aynı deadline varsa eklenmez (skipped).
      *
-     * <p>
-     * Not: title içinde virgül varsa tırnaklı alan desteklenir.
-     * </p>
+     * @return ImportResult (added / skipped)
      */
-    public void importTasksFromCSV(String projectId, String filePath) throws IOException {
+    public ImportResult importTasksFromCSV(String projectId, String filePath) throws IOException {
         if (filePath == null || filePath.isBlank()) {
             throw new IllegalArgumentException("CSV dosya yolu boş olamaz.");
         }
@@ -164,11 +183,19 @@ public class ProjectManager {
             throw new IllegalArgumentException("CSV dosyası bulunamadı: " + path.toAbsolutePath());
         }
 
-        List<String> lines = Files.readAllLines(path, StandardCharsets.UTF_8);
-        if (lines.isEmpty()) return;
+        // Mevcut görevlerden duplicate kontrol seti oluştur
+        Set<String> existingKeys = new HashSet<>();
+        for (Task t : project.getTasks()) {
+            existingKeys.add(makeKey(t.getTitle(), t.getDeadline().getDue()));
+        }
 
-        
-        for (int i = 1; i < lines.size(); i++) {
+        List<String> lines = Files.readAllLines(path, StandardCharsets.UTF_8);
+        if (lines.isEmpty()) return new ImportResult(0, 0);
+
+        int added = 0;
+        int skipped = 0;
+
+        for (int i = 1; i < lines.size(); i++) { // header atla
             String line = lines.get(i).trim();
             if (line.isEmpty()) continue;
 
@@ -180,11 +207,27 @@ public class ProjectManager {
             LocalDateTime deadline = LocalDateTime.parse(parts.get(2));
             boolean completed = Boolean.parseBoolean(parts.get(3));
 
+            String key = makeKey(title, deadline);
+            if (existingKeys.contains(key)) {
+                skipped++;
+                continue;
+            }
+
             Task task = new Task(title, "", new Deadline(deadline), priority);
             if (completed) task.complete();
 
             tasks.put(task.getId(), task);
             project.addTask(task);
+
+            existingKeys.add(key);
+            added++;
         }
+
+        return new ImportResult(added, skipped);
+    }
+
+    private String makeKey(String title, LocalDateTime deadline) {
+        String t = (title == null) ? "" : title.trim().toLowerCase();
+        return t + "||" + deadline.toString();
     }
 }
