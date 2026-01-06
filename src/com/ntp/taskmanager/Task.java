@@ -5,15 +5,6 @@ import java.util.UUID;
 
 /**
  * Sistemdeki temel görev (Task) sınıfıdır.
- *
- * <p>
- * Her görev bir başlık, açıklama, teslim tarihi (Deadline)
- * ve öncelik seviyesi (Priority) içerir.
- * </p>
- *
- * <p>
- * Bu sınıf {@link Completable} arayüzünü uygular.
- * </p>
  */
 public class Task implements Completable {
 
@@ -22,7 +13,6 @@ public class Task implements Completable {
     private String title;
     private String description;
 
-    // Encapsulation
     private Deadline deadline;
     private Priority priority;
 
@@ -36,60 +26,32 @@ public class Task implements Completable {
         this.completed = false;
     }
 
-    public String getId() {
-        return id;
-    }
+    public String getId() { return id; }
 
-    public String getTitle() {
-        return title;
-    }
+    public String getTitle() { return title; }
+    public void setTitle(String title) { this.title = Objects.requireNonNull(title); }
 
-    public void setTitle(String title) {
-        this.title = Objects.requireNonNull(title);
-    }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
 
-    public String getDescription() {
-        return description;
-    }
+    public Deadline getDeadline() { return deadline; }
+    public void setDeadline(Deadline deadline) { this.deadline = Objects.requireNonNull(deadline); }
 
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public Deadline getDeadline() {
-        return deadline;
-    }
-
-    public void setDeadline(Deadline deadline) {
-        this.deadline = Objects.requireNonNull(deadline);
-    }
-
-    public Priority getPriority() {
-        return priority;
-    }
-
-    public void setPriority(Priority priority) {
-        this.priority = Objects.requireNonNull(priority);
-    }
-
-    // ===== Interface implementation =====
+    public Priority getPriority() { return priority; }
+    public void setPriority(Priority priority) { this.priority = Objects.requireNonNull(priority); }
 
     @Override
-    public void complete() {
-        this.completed = true;
-    }
+    public void complete() { this.completed = true; }
 
     @Override
-    public boolean isCompleted() {
-        return completed;
-    }
+    public boolean isCompleted() { return completed; }
 
     @Override
     public String toString() {
         return "Task{" +
                 "id='" + id.substring(0, 8) + '\'' +
                 ", title='" + title + '\'' +
-                ", priority=" + priority +
+                ", priority=" + priority.getLabel() +
                 ", deadline=" + deadline +
                 ", completed=" + completed +
                 '}';
