@@ -43,11 +43,22 @@ public class ProjectManager {
         return Collections.unmodifiableCollection(projects.values());
     }
 
+    /** Projeleri sabit bir sıralamayla listeye çevirir (numaralandırma için). */
+    public List<Project> getProjectsAsList() {
+        List<Project> list = new ArrayList<>(projects.values());
+        // stabil sıralama: isim, sonra id
+        list.sort(Comparator.comparing(Project::getName, Comparator.nullsLast(String::compareToIgnoreCase))
+                .thenComparing(Project::getId));
+        return list;
+    }
+
     public Project getProjectById(String projectId) {
         Project p = projects.get(projectId);
         if (p == null) throw new IllegalArgumentException("Project not found: " + projectId);
         return p;
     }
+
+    /**  ID veya proje adıyla proje bulur. */
     public Project getProjectByIdOrName(String idOrName) {
         if (idOrName == null || idOrName.isBlank()) {
             throw new IllegalArgumentException("Project ID/Name boş olamaz.");
@@ -55,11 +66,9 @@ public class ProjectManager {
 
         String input = idOrName.trim();
 
-        // 1) Önce ID dene
         Project byId = projects.get(input);
         if (byId != null) return byId;
 
-        // 2) Sonra isme göre ara (case-insensitive, trim)
         String target = input.toLowerCase();
         List<Project> matches = new ArrayList<>();
 
@@ -79,6 +88,28 @@ public class ProjectManager {
         return matches.get(0);
     }
 
+    /**  Proje seçimi -> NUMARA / ID / İSİM */
+    public Project getProjectByNumberOrIdOrName(String input) {
+        if (input == null || input.isBlank()) {
+            throw new IllegalArgumentException("Project seçimi boş olamaz.");
+        }
+
+        String s = input.trim();
+
+        // Eğer sayıysa -> numaradan proje seç
+        if (s.matches("\\d+")) {
+            int number = Integer.parseInt(s);
+            List<Project> list = getProjectsAsList();
+            if (number < 1 || number > list.size()) {
+                throw new IllegalArgumentException("Geçersiz proje numarası: " + number);
+            }
+            return list.get(number - 1);
+        }
+
+        // değilse id/isim
+        return getProjectByIdOrName(s);
+    }
+
     public Task getTaskById(String taskId) {
         Task t = tasks.get(taskId);
         if (t == null) throw new IllegalArgumentException("Task not found: " + taskId);
@@ -90,7 +121,7 @@ public class ProjectManager {
             throw new IllegalArgumentException("Task ID boş olamaz.");
         }
 
-        Task direct = tasks.get(idOrShort);
+        Task direct = tasks.get(idOrShort.trim());
         if (direct != null) return direct;
 
         List<Task> matches = new ArrayList<>();
@@ -109,9 +140,9 @@ public class ProjectManager {
         return matches.get(0);
     }
 
-    public void assignTaskToProject(String taskIdOrShortId, String projectIdOrName) {
+    public void assignTaskToProject(String taskIdOrShortId, String projectNumberOrIdOrName) {
         Task task = getTaskByIdOrShortId(taskIdOrShortId);
-        Project project = getProjectByIdOrName(projectIdOrName);
+        Project project = getProjectByNumberOrIdOrName(projectNumberOrIdOrName);
         project.addTask(task);
     }
 
@@ -148,8 +179,8 @@ public class ProjectManager {
 
     /* ===================== LISTING ===================== */
 
-    public List<Task> listUpcomingTasks(String projectIdOrName, long withinHours) {
-        Project project = getProjectByIdOrName(projectIdOrName);
+    public List<Task> listUpcomingTasks(String projectNumberOrIdOrName, long withinHours) {
+        Project project = getProjectByNumberOrIdOrName(projectNumberOrIdOrName);
         List<Task> result = new ArrayList<>();
 
         for (Task t : project.getTasks()) {
@@ -166,8 +197,8 @@ public class ProjectManager {
         return result;
     }
 
-    public List<Task> listProjectTasks(String projectIdOrName, Boolean completedFilter) {
-        Project project = getProjectByIdOrName(projectIdOrName);
+    public List<Task> listProjectTasks(String projectNumberOrIdOrName, Boolean completedFilter) {
+        Project project = getProjectByNumberOrIdOrName(projectNumberOrIdOrName);
         List<Task> result = new ArrayList<>();
 
         for (Task t : project.getTasks()) {
@@ -182,7 +213,7 @@ public class ProjectManager {
         return result;
     }
 
-    public List<Task> searchProjectTasks(String projectIdOrName,
+    public List<Task> searchProjectTasks(String projectNumberOrIdOrName,
                                          String keyword,
                                          boolean searchInDescription,
                                          Boolean completedFilter) {
@@ -191,7 +222,7 @@ public class ProjectManager {
             throw new IllegalArgumentException("Arama kelimesi boş olamaz.");
         }
 
-        Project project = getProjectByIdOrName(projectIdOrName);
+        Project project = getProjectByNumberOrIdOrName(projectNumberOrIdOrName);
         String k = keyword.trim().toLowerCase();
 
         List<Task> result = new ArrayList<>();
@@ -219,14 +250,14 @@ public class ProjectManager {
         return result;
     }
 
-    public List<Task> searchProjectTasksAdvanced(String projectIdOrName,
+    public List<Task> searchProjectTasksAdvanced(String projectNumberOrIdOrName,
                                                  String keyword,
                                                  boolean searchInDescription,
                                                  Boolean completedFilter,
                                                  Long onlyUpcomingWithinHours,
                                                  int limit) {
 
-        List<Task> base = searchProjectTasks(projectIdOrName, keyword, searchInDescription, completedFilter);
+        List<Task> base = searchProjectTasks(projectNumberOrIdOrName, keyword, searchInDescription, completedFilter);
 
         LocalDateTime now = LocalDateTime.now();
         List<Task> filtered = new ArrayList<>();
@@ -252,15 +283,15 @@ public class ProjectManager {
         return filtered;
     }
 
-    public List<Task> runReminders(String projectIdOrName, long withinMinutes) {
-        Project project = getProjectByIdOrName(projectIdOrName);
+    public List<Task> runReminders(String projectNumberOrIdOrName, long withinMinutes) {
+        Project project = getProjectByNumberOrIdOrName(projectNumberOrIdOrName);
         return reminderService.getTasksToRemind(project.getTasks(), withinMinutes);
     }
 
     /* ===================== CSV EXPORT / IMPORT ===================== */
 
-    public String exportProjectAsCSV(String projectIdOrName) {
-        Project project = getProjectByIdOrName(projectIdOrName);
+    public String exportProjectAsCSV(String projectNumberOrIdOrName) {
+        Project project = getProjectByNumberOrIdOrName(projectNumberOrIdOrName);
 
         StringBuilder sb = new StringBuilder();
         sb.append("title,priority,deadline,completed\n");
@@ -276,10 +307,10 @@ public class ProjectManager {
         return sb.toString();
     }
 
-    public Path exportProjectCSVToFile(String projectIdOrName, String filePath) throws IOException {
+    public Path exportProjectCSVToFile(String projectNumberOrIdOrName, String filePath) throws IOException {
         if (filePath == null || filePath.isBlank()) throw new IllegalArgumentException("filePath boş olamaz.");
 
-        String csv = exportProjectAsCSV(projectIdOrName);
+        String csv = exportProjectAsCSV(projectNumberOrIdOrName);
         Path path = Path.of(filePath);
 
         if (path.getParent() != null && !Files.exists(path.getParent())) {
@@ -303,10 +334,10 @@ public class ProjectManager {
         public int getSkipped() { return skipped; }
     }
 
-    public ImportResult importTasksFromCSV(String projectIdOrName, String filePath) throws IOException {
+    public ImportResult importTasksFromCSV(String projectNumberOrIdOrName, String filePath) throws IOException {
         if (filePath == null || filePath.isBlank()) throw new IllegalArgumentException("CSV dosya yolu boş olamaz.");
 
-        Project project = getProjectByIdOrName(projectIdOrName);
+        Project project = getProjectByNumberOrIdOrName(projectNumberOrIdOrName);
         Path path = Path.of(filePath);
 
         if (!Files.exists(path)) throw new IllegalArgumentException("CSV dosyası bulunamadı: " + path.toAbsolutePath());

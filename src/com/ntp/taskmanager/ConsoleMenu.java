@@ -22,18 +22,18 @@ public class ConsoleMenu {
             System.out.println("1) Proje oluştur");
             System.out.println("2) Projeleri listele");
             System.out.println("3) Görev oluştur");
-            System.out.println("4) Görevi projeye ata (Task ID/kısa ID + Proje ID/isim)");
+            System.out.println("4) Görevi projeye ata (Task ID/kısa ID + Proje seçimi)");
             System.out.println("5) Görev tamamla (ID / kısa ID)");
-            System.out.println("6) Yaklaşan görevleri listele (Proje ID/isim)");
-            System.out.println("7) Projeyi CSV olarak yazdır (Proje ID/isim)");
-            System.out.println("8) Projedeki tüm görevleri listele (Proje ID/isim)");
-            System.out.println("9) CSV'yi dosyaya kaydet (Proje ID/isim)");
-            System.out.println("10) CSV'den görevleri yükle (Proje ID/isim)");
+            System.out.println("6) Yaklaşan görevleri listele (Proje seçimi)");
+            System.out.println("7) Projeyi CSV olarak yazdır (Proje seçimi)");
+            System.out.println("8) Projedeki tüm görevleri listele (Proje seçimi)");
+            System.out.println("9) CSV'yi dosyaya kaydet (Proje seçimi)");
+            System.out.println("10) CSV'den görevleri yükle (Proje seçimi)");
             System.out.println("11) Task detay görüntüle (ID / kısa ID)");
             System.out.println("12) Task sil (ID / kısa ID)");
             System.out.println("13) Task güncelle (ID / kısa ID)");
-            System.out.println("14) Hatırlatmaları çalıştır (Proje ID/isim)");
-            System.out.println("15) Projede görev ara (Proje ID/isim)");
+            System.out.println("14) Hatırlatmaları çalıştır (Proje seçimi)");
+            System.out.println("15) Projede görev ara (Proje seçimi)");
             System.out.println("0) Çıkış");
             System.out.print("Seçim: ");
 
@@ -68,6 +68,15 @@ public class ConsoleMenu {
         }
     }
 
+    private String askProjectSelection() {
+        System.out.println("\nProje seçimi:");
+        System.out.println("- Numara (örn: 1)");
+        System.out.println("- Proje ID");
+        System.out.println("- Proje adı");
+        System.out.print("Seçim: ");
+        return sc.nextLine().trim();
+    }
+
     private void createProject() {
         System.out.print("Proje adı: ");
         String name = sc.nextLine().trim();
@@ -76,16 +85,18 @@ public class ConsoleMenu {
     }
 
     private void listProjects() {
-        var projects = pm.getAllProjects();
-        if (projects.isEmpty()) {
+        List<Project> list = pm.getProjectsAsList();
+        if (list.isEmpty()) {
             System.out.println("Proje yok.");
             return;
         }
+
         System.out.println("--- Projeler ---");
-        for (Project p : projects) {
-            System.out.println("ID: " + p.getId() + " | Ad: " + p.getName() + " | Görev: " + p.getTasks().size());
+        for (int i = 0; i < list.size(); i++) {
+            Project p = list.get(i);
+            System.out.println((i + 1) + ") " + p.getName() + " | ID: " + p.getId() + " | Görev: " + p.getTasks().size());
         }
-        System.out.println("(İpucu: Proje seçerken ID veya adı girebilirsin.)");
+        System.out.println("(İpucu: Proje seçerken numara / ID / isim girebilirsin.)");
     }
 
     private void createTask() {
@@ -121,10 +132,10 @@ public class ConsoleMenu {
         System.out.print("Task ID veya kısa ID: ");
         String taskIdOrShort = sc.nextLine().trim();
 
-        System.out.print("Project ID veya Proje Adı: ");
-        String projectIdOrName = sc.nextLine().trim();
+        System.out.println("(Önce projeleri görmek için 2'yi seçebilirsin.)");
+        String projectSel = askProjectSelection();
 
-        pm.assignTaskToProject(taskIdOrShort, projectIdOrName);
+        pm.assignTaskToProject(taskIdOrShort, projectSel);
         System.out.println("Görev projeye atandı.");
     }
 
@@ -137,13 +148,12 @@ public class ConsoleMenu {
     }
 
     private void listUpcoming() {
-        System.out.print("Project ID veya Proje Adı: ");
-        String projectIdOrName = sc.nextLine().trim();
+        String projectSel = askProjectSelection();
 
         System.out.print("Kaç saat içinde? (örn: 24): ");
         long hours = Long.parseLong(sc.nextLine().trim());
 
-        List<Task> upcoming = pm.listUpcomingTasks(projectIdOrName, hours);
+        List<Task> upcoming = pm.listUpcomingTasks(projectSel, hours);
         if (upcoming.isEmpty()) {
             System.out.println("Yaklaşan görev yok (" + hours + " saat içinde).");
             return;
@@ -156,17 +166,15 @@ public class ConsoleMenu {
     }
 
     private void exportCsv() {
-        System.out.print("Project ID veya Proje Adı: ");
-        String projectIdOrName = sc.nextLine().trim();
+        String projectSel = askProjectSelection();
 
-        String csv = pm.exportProjectAsCSV(projectIdOrName);
+        String csv = pm.exportProjectAsCSV(projectSel);
         System.out.println("\n--- CSV ---");
         System.out.println(csv);
     }
 
     private void listAllProjectTasks() {
-        System.out.print("Project ID veya Proje Adı: ");
-        String projectIdOrName = sc.nextLine().trim();
+        String projectSel = askProjectSelection();
 
         System.out.println("Filtre seç:");
         System.out.println("1) Tümü");
@@ -179,7 +187,7 @@ public class ConsoleMenu {
         if ("2".equals(f)) filter = true;
         else if ("3".equals(f)) filter = false;
 
-        List<Task> list = pm.listProjectTasks(projectIdOrName, filter);
+        List<Task> list = pm.listProjectTasks(projectSel, filter);
         if (list.isEmpty()) {
             System.out.println("Görev bulunamadı.");
             return;
@@ -198,35 +206,32 @@ public class ConsoleMenu {
     }
 
     private void exportCsvToFile() throws Exception {
-        System.out.print("Project ID veya Proje Adı: ");
-        String projectIdOrName = sc.nextLine().trim();
+        String projectSel = askProjectSelection();
 
         System.out.print("Dosya yolu (örn: C:\\temp\\project.csv): ");
         String path = sc.nextLine().trim();
 
-        Path saved = pm.exportProjectCSVToFile(projectIdOrName, path);
+        Path saved = pm.exportProjectCSVToFile(projectSel, path);
         System.out.println("CSV kaydedildi: " + saved.toAbsolutePath());
     }
 
     private void importCsvFromFile() throws Exception {
-        System.out.print("Project ID veya Proje Adı: ");
-        String projectIdOrName = sc.nextLine().trim();
+        String projectSel = askProjectSelection();
 
         System.out.print("CSV dosya yolu: ");
         String path = sc.nextLine().trim();
 
-        ProjectManager.ImportResult result = pm.importTasksFromCSV(projectIdOrName, path);
+        ProjectManager.ImportResult result = pm.importTasksFromCSV(projectSel, path);
         System.out.println("İçe aktarma tamamlandı. Eklenen: " + result.getAdded() + " | Atlanan: " + result.getSkipped());
     }
 
     private void runReminders() {
-        System.out.print("Project ID veya Proje Adı: ");
-        String projectIdOrName = sc.nextLine().trim();
+        String projectSel = askProjectSelection();
 
         System.out.print("Kaç dakika içinde yaklaşanlar? (örn: 60): ");
         long mins = Long.parseLong(sc.nextLine().trim());
 
-        List<Task> remind = pm.runReminders(projectIdOrName, mins);
+        List<Task> remind = pm.runReminders(projectSel, mins);
         if (remind.isEmpty()) {
             System.out.println("Hatırlatma yok.");
             return;
@@ -239,8 +244,7 @@ public class ConsoleMenu {
     }
 
     private void searchTasksInProjectAdvanced() {
-        System.out.print("Project ID veya Proje Adı: ");
-        String projectIdOrName = sc.nextLine().trim();
+        String projectSel = askProjectSelection();
 
         System.out.print("Aranacak kelime: ");
         String keyword = sc.nextLine().trim();
@@ -269,7 +273,7 @@ public class ConsoleMenu {
         int limit = 0;
         if (!lim.isBlank()) limit = Integer.parseInt(lim);
 
-        List<Task> result = pm.searchProjectTasksAdvanced(projectIdOrName, keyword, inDesc, filter, withinHours, limit);
+        List<Task> result = pm.searchProjectTasksAdvanced(projectSel, keyword, inDesc, filter, withinHours, limit);
 
         if (result.isEmpty()) {
             System.out.println("Sonuç bulunamadı.");
