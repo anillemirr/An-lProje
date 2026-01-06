@@ -10,7 +10,7 @@ public class ConsoleMenu {
     private final ProjectManager pm;
     private final Scanner sc = new Scanner(System.in);
 
-    // Esnek saat formatı: "8:00" da kabul etsin diye H:mm
+    // "8:00" da kabul etsin diye H:mm
     private final DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd H:mm");
 
     public ConsoleMenu(ProjectManager pm) {
@@ -28,7 +28,8 @@ public class ConsoleMenu {
             System.out.println("6) Yaklaşan görevleri listele");
             System.out.println("7) Projeyi CSV olarak yazdır");
             System.out.println("8) Projedeki tüm görevleri listele");
-            System.out.println("9) CSV'yi dosyaya kaydet"); // ✅ Commit 8
+            System.out.println("9) CSV'yi dosyaya kaydet");
+            System.out.println("10) CSV'den görevleri yükle");
             System.out.println("0) Çıkış");
             System.out.print("Seçim: ");
 
@@ -44,7 +45,8 @@ public class ConsoleMenu {
                     case "6" -> listUpcoming();
                     case "7" -> exportCsv();
                     case "8" -> listAllProjectTasks();
-                    case "9" -> exportCsvToFile(); // ✅ Commit 8
+                    case "9" -> exportCsvToFile();
+                    case "10" -> importCsvFromFile();
                     case "0" -> {
                         System.out.println("Çıkış yapıldı.");
                         return;
@@ -184,6 +186,17 @@ public class ConsoleMenu {
 
         Path saved = pm.exportProjectCSVToFile(projectId, path);
         System.out.println("CSV kaydedildi: " + saved.toAbsolutePath());
+    }
+
+    private void importCsvFromFile() throws Exception {
+        System.out.print("Project ID: ");
+        String projectId = sc.nextLine().trim();
+
+        System.out.print("CSV dosya yolu: ");
+        String path = sc.nextLine().trim();
+
+        pm.importTasksFromCSV(projectId, path);
+        System.out.println("CSV'den görevler başarıyla yüklendi.");
     }
 
     private Priority readPriority() {
