@@ -22,18 +22,18 @@ public class ConsoleMenu {
             System.out.println("1) Proje oluştur");
             System.out.println("2) Projeleri listele");
             System.out.println("3) Görev oluştur");
-            System.out.println("4) Görevi projeye ata (ID / kısa ID)");
+            System.out.println("4) Görevi projeye ata (Task ID/kısa ID + Proje ID/isim)");
             System.out.println("5) Görev tamamla (ID / kısa ID)");
-            System.out.println("6) Yaklaşan görevleri listele");
-            System.out.println("7) Projeyi CSV olarak yazdır");
-            System.out.println("8) Projedeki tüm görevleri listele");
-            System.out.println("9) CSV'yi dosyaya kaydet");
-            System.out.println("10) CSV'den görevleri yükle");
+            System.out.println("6) Yaklaşan görevleri listele (Proje ID/isim)");
+            System.out.println("7) Projeyi CSV olarak yazdır (Proje ID/isim)");
+            System.out.println("8) Projedeki tüm görevleri listele (Proje ID/isim)");
+            System.out.println("9) CSV'yi dosyaya kaydet (Proje ID/isim)");
+            System.out.println("10) CSV'den görevleri yükle (Proje ID/isim)");
             System.out.println("11) Task detay görüntüle (ID / kısa ID)");
             System.out.println("12) Task sil (ID / kısa ID)");
             System.out.println("13) Task güncelle (ID / kısa ID)");
-            System.out.println("14) Hatırlatmaları çalıştır");
-            System.out.println("15) Projede görev ara (TOP-N / Yaklaşan filtresi)");
+            System.out.println("14) Hatırlatmaları çalıştır (Proje ID/isim)");
+            System.out.println("15) Projede görev ara (Proje ID/isim)");
             System.out.println("0) Çıkış");
             System.out.print("Seçim: ");
 
@@ -55,7 +55,7 @@ public class ConsoleMenu {
                     case "12" -> deleteTask();
                     case "13" -> updateTask();
                     case "14" -> runReminders();
-                    case "15" -> searchTasksInProjectAdvanced(); 
+                    case "15" -> searchTasksInProjectAdvanced();
                     case "0" -> {
                         System.out.println("Çıkış yapıldı.");
                         return;
@@ -66,109 +66,6 @@ public class ConsoleMenu {
                 System.out.println("Hata: " + e.getMessage());
             }
         }
-    }
-    private void searchTasksInProjectAdvanced() {
-        System.out.print("Project ID: ");
-        String projectId = sc.nextLine().trim();
-
-        System.out.print("Aranacak kelime: ");
-        String keyword = sc.nextLine().trim();
-
-        System.out.print("Açıklamada da ara? (E/H): ");
-        boolean inDesc = sc.nextLine().trim().equalsIgnoreCase("E");
-
-        System.out.println("Filtre seç:");
-        System.out.println("1) Tümü");
-        System.out.println("2) Sadece tamamlanan");
-        System.out.println("3) Sadece tamamlanmayan");
-        System.out.print("Seçim: ");
-        String f = sc.nextLine().trim();
-
-        Boolean filter = null;
-        if ("2".equals(f)) filter = true;
-        else if ("3".equals(f)) filter = false;
-
-        System.out.print("Sadece yaklaşanlar? (X saat içinde) (boş=tümü): ");
-        String up = sc.nextLine().trim();
-        Long withinHours = null;
-        if (!up.isBlank()) withinHours = Long.parseLong(up);
-
-        System.out.print("Kaç sonuç gösterilsin? (örn: 5) (boş=limit yok): ");
-        String lim = sc.nextLine().trim();
-        int limit = 0;
-        if (!lim.isBlank()) limit = Integer.parseInt(lim);
-
-        List<Task> result = pm.searchProjectTasksAdvanced(projectId, keyword, inDesc, filter, withinHours, limit);
-
-        if (result.isEmpty()) {
-            System.out.println("Sonuç bulunamadı.");
-            return;
-        }
-
-        System.out.println("--- ARAMA SONUÇLARI (deadline en yakın üstte) ---");
-        for (Task t : result) {
-            String status = t.isCompleted() ? "✅" : "🟡";
-            System.out.println(status +
-                    " | ID: " + t.getId() +
-                    " | Kısa: " + t.getShortId() +
-                    " | " + t.getTitle() +
-                    " | Öncelik: " + t.getPriority().getLabel() +
-                    " | Deadline: " + t.getDeadline().getDue());
-        }
-    }
-
-    private void runReminders() {
-        System.out.print("Project ID: ");
-        String projectId = sc.nextLine().trim();
-
-        System.out.print("Kaç dakika içinde yaklaşanlar? (örn: 60): ");
-        long mins = Long.parseLong(sc.nextLine().trim());
-
-        List<Task> remind = pm.runReminders(projectId, mins);
-        if (remind.isEmpty()) {
-            System.out.println("Hatırlatma yok.");
-            return;
-        }
-
-        System.out.println("--- HATIRLATMALAR ---");
-        for (Task t : remind) {
-            System.out.println("ID: " + t.getId() + " | Kısa: " + t.getShortId() + " | " + Notification.upcoming(t));
-        }
-    }
-
-    private void updateTask() {
-        System.out.print("Güncellenecek Task ID veya kısa ID: ");
-        String idOrShort = sc.nextLine().trim();
-
-        Task existing = pm.getTaskByIdOrShortId(idOrShort);
-        System.out.println("Mevcut: " + existing);
-
-        System.out.println("Boş bırakırsan aynı kalır.");
-
-        System.out.print("Yeni başlık: ");
-        String newTitle = sc.nextLine();
-
-        System.out.print("Yeni açıklama (boş bırakabilirsin): ");
-        String newDesc = sc.nextLine();
-
-        System.out.print("Yeni öncelik (DUSUK/ORTA/YUKSEK) (boş=değişmesin): ");
-        String pr = sc.nextLine().trim().toUpperCase();
-        Priority newPriority = null;
-        if (!pr.isBlank()) newPriority = Priority.valueOf(pr);
-
-        System.out.print("Yeni deadline (yyyy-MM-dd H:mm) (boş=değişmesin): ");
-        String dl = sc.nextLine().trim();
-        LocalDateTime newDeadline = null;
-        if (!dl.isBlank()) newDeadline = LocalDateTime.parse(dl, fmt);
-
-        pm.updateTask(idOrShort,
-                newTitle == null || newTitle.isBlank() ? null : newTitle,
-                newDesc,
-                newPriority,
-                newDeadline);
-
-        System.out.println("Task güncellendi.");
-        System.out.println("Yeni: " + pm.getTaskByIdOrShortId(idOrShort));
     }
 
     private void createProject() {
@@ -186,8 +83,9 @@ public class ConsoleMenu {
         }
         System.out.println("--- Projeler ---");
         for (Project p : projects) {
-            System.out.println("ID: " + p.getId() + " | " + p.getName() + " | Görev: " + p.getTasks().size());
+            System.out.println("ID: " + p.getId() + " | Ad: " + p.getName() + " | Görev: " + p.getTasks().size());
         }
+        System.out.println("(İpucu: Proje seçerken ID veya adı girebilirsin.)");
     }
 
     private void createTask() {
@@ -223,10 +121,10 @@ public class ConsoleMenu {
         System.out.print("Task ID veya kısa ID: ");
         String taskIdOrShort = sc.nextLine().trim();
 
-        System.out.print("Project ID: ");
-        String projectId = sc.nextLine().trim();
+        System.out.print("Project ID veya Proje Adı: ");
+        String projectIdOrName = sc.nextLine().trim();
 
-        pm.assignTaskToProject(taskIdOrShort, projectId);
+        pm.assignTaskToProject(taskIdOrShort, projectIdOrName);
         System.out.println("Görev projeye atandı.");
     }
 
@@ -239,13 +137,13 @@ public class ConsoleMenu {
     }
 
     private void listUpcoming() {
-        System.out.print("Project ID: ");
-        String projectId = sc.nextLine().trim();
+        System.out.print("Project ID veya Proje Adı: ");
+        String projectIdOrName = sc.nextLine().trim();
 
         System.out.print("Kaç saat içinde? (örn: 24): ");
         long hours = Long.parseLong(sc.nextLine().trim());
 
-        List<Task> upcoming = pm.listUpcomingTasks(projectId, hours);
+        List<Task> upcoming = pm.listUpcomingTasks(projectIdOrName, hours);
         if (upcoming.isEmpty()) {
             System.out.println("Yaklaşan görev yok (" + hours + " saat içinde).");
             return;
@@ -258,17 +156,17 @@ public class ConsoleMenu {
     }
 
     private void exportCsv() {
-        System.out.print("Project ID: ");
-        String projectId = sc.nextLine().trim();
+        System.out.print("Project ID veya Proje Adı: ");
+        String projectIdOrName = sc.nextLine().trim();
 
-        String csv = pm.exportProjectAsCSV(projectId);
+        String csv = pm.exportProjectAsCSV(projectIdOrName);
         System.out.println("\n--- CSV ---");
         System.out.println(csv);
     }
 
     private void listAllProjectTasks() {
-        System.out.print("Project ID: ");
-        String projectId = sc.nextLine().trim();
+        System.out.print("Project ID veya Proje Adı: ");
+        String projectIdOrName = sc.nextLine().trim();
 
         System.out.println("Filtre seç:");
         System.out.println("1) Tümü");
@@ -281,7 +179,7 @@ public class ConsoleMenu {
         if ("2".equals(f)) filter = true;
         else if ("3".equals(f)) filter = false;
 
-        List<Task> list = pm.listProjectTasks(projectId, filter);
+        List<Task> list = pm.listProjectTasks(projectIdOrName, filter);
         if (list.isEmpty()) {
             System.out.println("Görev bulunamadı.");
             return;
@@ -300,25 +198,94 @@ public class ConsoleMenu {
     }
 
     private void exportCsvToFile() throws Exception {
-        System.out.print("Project ID: ");
-        String projectId = sc.nextLine().trim();
+        System.out.print("Project ID veya Proje Adı: ");
+        String projectIdOrName = sc.nextLine().trim();
 
         System.out.print("Dosya yolu (örn: C:\\temp\\project.csv): ");
         String path = sc.nextLine().trim();
 
-        Path saved = pm.exportProjectCSVToFile(projectId, path);
+        Path saved = pm.exportProjectCSVToFile(projectIdOrName, path);
         System.out.println("CSV kaydedildi: " + saved.toAbsolutePath());
     }
 
     private void importCsvFromFile() throws Exception {
-        System.out.print("Project ID: ");
-        String projectId = sc.nextLine().trim();
+        System.out.print("Project ID veya Proje Adı: ");
+        String projectIdOrName = sc.nextLine().trim();
 
         System.out.print("CSV dosya yolu: ");
         String path = sc.nextLine().trim();
 
-        ProjectManager.ImportResult result = pm.importTasksFromCSV(projectId, path);
+        ProjectManager.ImportResult result = pm.importTasksFromCSV(projectIdOrName, path);
         System.out.println("İçe aktarma tamamlandı. Eklenen: " + result.getAdded() + " | Atlanan: " + result.getSkipped());
+    }
+
+    private void runReminders() {
+        System.out.print("Project ID veya Proje Adı: ");
+        String projectIdOrName = sc.nextLine().trim();
+
+        System.out.print("Kaç dakika içinde yaklaşanlar? (örn: 60): ");
+        long mins = Long.parseLong(sc.nextLine().trim());
+
+        List<Task> remind = pm.runReminders(projectIdOrName, mins);
+        if (remind.isEmpty()) {
+            System.out.println("Hatırlatma yok.");
+            return;
+        }
+
+        System.out.println("--- HATIRLATMALAR ---");
+        for (Task t : remind) {
+            System.out.println("ID: " + t.getId() + " | Kısa: " + t.getShortId() + " | " + Notification.upcoming(t));
+        }
+    }
+
+    private void searchTasksInProjectAdvanced() {
+        System.out.print("Project ID veya Proje Adı: ");
+        String projectIdOrName = sc.nextLine().trim();
+
+        System.out.print("Aranacak kelime: ");
+        String keyword = sc.nextLine().trim();
+
+        System.out.print("Açıklamada da ara? (E/H): ");
+        boolean inDesc = sc.nextLine().trim().equalsIgnoreCase("E");
+
+        System.out.println("Filtre seç:");
+        System.out.println("1) Tümü");
+        System.out.println("2) Sadece tamamlanan");
+        System.out.println("3) Sadece tamamlanmayan");
+        System.out.print("Seçim: ");
+        String f = sc.nextLine().trim();
+
+        Boolean filter = null;
+        if ("2".equals(f)) filter = true;
+        else if ("3".equals(f)) filter = false;
+
+        System.out.print("Sadece yaklaşanlar? (X saat içinde) (boş=tümü): ");
+        String up = sc.nextLine().trim();
+        Long withinHours = null;
+        if (!up.isBlank()) withinHours = Long.parseLong(up);
+
+        System.out.print("Kaç sonuç gösterilsin? (örn: 5) (boş=limit yok): ");
+        String lim = sc.nextLine().trim();
+        int limit = 0;
+        if (!lim.isBlank()) limit = Integer.parseInt(lim);
+
+        List<Task> result = pm.searchProjectTasksAdvanced(projectIdOrName, keyword, inDesc, filter, withinHours, limit);
+
+        if (result.isEmpty()) {
+            System.out.println("Sonuç bulunamadı.");
+            return;
+        }
+
+        System.out.println("--- ARAMA SONUÇLARI (deadline en yakın üstte) ---");
+        for (Task t : result) {
+            String status = t.isCompleted() ? "✅" : "🟡";
+            System.out.println(status +
+                    " | ID: " + t.getId() +
+                    " | Kısa: " + t.getShortId() +
+                    " | " + t.getTitle() +
+                    " | Öncelik: " + t.getPriority().getLabel() +
+                    " | Deadline: " + t.getDeadline().getDue());
+        }
     }
 
     private void showTaskDetails() {
@@ -352,6 +319,41 @@ public class ConsoleMenu {
 
         String deletedId = pm.deleteTask(idOrShort);
         System.out.println("Task silindi. ID: " + deletedId);
+    }
+
+    private void updateTask() {
+        System.out.print("Güncellenecek Task ID veya kısa ID: ");
+        String idOrShort = sc.nextLine().trim();
+
+        Task existing = pm.getTaskByIdOrShortId(idOrShort);
+        System.out.println("Mevcut: " + existing);
+
+        System.out.println("Boş bırakırsan aynı kalır.");
+
+        System.out.print("Yeni başlık: ");
+        String newTitle = sc.nextLine();
+
+        System.out.print("Yeni açıklama (boş bırakabilirsin): ");
+        String newDesc = sc.nextLine();
+
+        System.out.print("Yeni öncelik (DUSUK/ORTA/YUKSEK) (boş=değişmesin): ");
+        String pr = sc.nextLine().trim().toUpperCase();
+        Priority newPriority = null;
+        if (!pr.isBlank()) newPriority = Priority.valueOf(pr);
+
+        System.out.print("Yeni deadline (yyyy-MM-dd H:mm) (boş=değişmesin): ");
+        String dl = sc.nextLine().trim();
+        LocalDateTime newDeadline = null;
+        if (!dl.isBlank()) newDeadline = LocalDateTime.parse(dl, fmt);
+
+        pm.updateTask(idOrShort,
+                newTitle == null || newTitle.isBlank() ? null : newTitle,
+                newDesc,
+                newPriority,
+                newDeadline);
+
+        System.out.println("Task güncellendi.");
+        System.out.println("Yeni: " + pm.getTaskByIdOrShortId(idOrShort));
     }
 
     private Priority readPriority() {

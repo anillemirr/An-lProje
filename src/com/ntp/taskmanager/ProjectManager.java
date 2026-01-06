@@ -48,6 +48,36 @@ public class ProjectManager {
         if (p == null) throw new IllegalArgumentException("Project not found: " + projectId);
         return p;
     }
+    public Project getProjectByIdOrName(String idOrName) {
+        if (idOrName == null || idOrName.isBlank()) {
+            throw new IllegalArgumentException("Project ID/Name boş olamaz.");
+        }
+
+        String input = idOrName.trim();
+
+        // 1) Önce ID dene
+        Project byId = projects.get(input);
+        if (byId != null) return byId;
+
+        // 2) Sonra isme göre ara (case-insensitive, trim)
+        String target = input.toLowerCase();
+        List<Project> matches = new ArrayList<>();
+
+        for (Project p : projects.values()) {
+            String name = p.getName();
+            if (name != null && name.trim().toLowerCase().equals(target)) {
+                matches.add(p);
+            }
+        }
+
+        if (matches.isEmpty()) {
+            throw new IllegalArgumentException("Project bulunamadı (ID/Name): " + input);
+        }
+        if (matches.size() > 1) {
+            throw new IllegalArgumentException("Birden fazla proje aynı isimde. Lütfen Project ID kullan.");
+        }
+        return matches.get(0);
+    }
 
     public Task getTaskById(String taskId) {
         Task t = tasks.get(taskId);
@@ -65,7 +95,7 @@ public class ProjectManager {
 
         List<Task> matches = new ArrayList<>();
         for (Task t : tasks.values()) {
-            if (t.getShortId().equalsIgnoreCase(idOrShort)) {
+            if (t.getShortId().equalsIgnoreCase(idOrShort.trim())) {
                 matches.add(t);
             }
         }
@@ -79,9 +109,9 @@ public class ProjectManager {
         return matches.get(0);
     }
 
-    public void assignTaskToProject(String taskIdOrShortId, String projectId) {
+    public void assignTaskToProject(String taskIdOrShortId, String projectIdOrName) {
         Task task = getTaskByIdOrShortId(taskIdOrShortId);
-        Project project = getProjectById(projectId);
+        Project project = getProjectByIdOrName(projectIdOrName);
         project.addTask(task);
     }
 
@@ -118,8 +148,8 @@ public class ProjectManager {
 
     /* ===================== LISTING ===================== */
 
-    public List<Task> listUpcomingTasks(String projectId, long withinHours) {
-        Project project = getProjectById(projectId);
+    public List<Task> listUpcomingTasks(String projectIdOrName, long withinHours) {
+        Project project = getProjectByIdOrName(projectIdOrName);
         List<Task> result = new ArrayList<>();
 
         for (Task t : project.getTasks()) {
@@ -136,8 +166,8 @@ public class ProjectManager {
         return result;
     }
 
-    public List<Task> listProjectTasks(String projectId, Boolean completedFilter) {
-        Project project = getProjectById(projectId);
+    public List<Task> listProjectTasks(String projectIdOrName, Boolean completedFilter) {
+        Project project = getProjectByIdOrName(projectIdOrName);
         List<Task> result = new ArrayList<>();
 
         for (Task t : project.getTasks()) {
@@ -152,7 +182,7 @@ public class ProjectManager {
         return result;
     }
 
-    public List<Task> searchProjectTasks(String projectId,
+    public List<Task> searchProjectTasks(String projectIdOrName,
                                          String keyword,
                                          boolean searchInDescription,
                                          Boolean completedFilter) {
@@ -161,7 +191,7 @@ public class ProjectManager {
             throw new IllegalArgumentException("Arama kelimesi boş olamaz.");
         }
 
-        Project project = getProjectById(projectId);
+        Project project = getProjectByIdOrName(projectIdOrName);
         String k = keyword.trim().toLowerCase();
 
         List<Task> result = new ArrayList<>();
@@ -189,25 +219,14 @@ public class ProjectManager {
         return result;
     }
 
-    /**
-     *
-     * @param projectId proje
-     * @param keyword aranacak kelime
-     * @param searchInDescription description içinde de ara mı?
-     * @param completedFilter null=tümü, true=tamamlanan, false=tamamlanmayan
-     * @param onlyUpcomingWithinHours null ise tümü, değer verilirse sadece X saat içinde deadline olanlar
-     * @param limit sonuç limiti (<=0 ise limit yok)
-     *
-     * @return filtrelenmiş liste (deadline'a göre en yakınlar üstte)
-     */
-    public List<Task> searchProjectTasksAdvanced(String projectId,
+    public List<Task> searchProjectTasksAdvanced(String projectIdOrName,
                                                  String keyword,
                                                  boolean searchInDescription,
                                                  Boolean completedFilter,
                                                  Long onlyUpcomingWithinHours,
                                                  int limit) {
 
-        List<Task> base = searchProjectTasks(projectId, keyword, searchInDescription, completedFilter);
+        List<Task> base = searchProjectTasks(projectIdOrName, keyword, searchInDescription, completedFilter);
 
         LocalDateTime now = LocalDateTime.now();
         List<Task> filtered = new ArrayList<>();
@@ -218,14 +237,13 @@ public class ProjectManager {
                 continue;
             }
 
-            if (t.isCompleted()) continue; // yaklaşan dediğinde completed istemeyiz
+            if (t.isCompleted()) continue;
             if (t.getDeadline().isOverdue()) continue;
 
             long hoursLeft = Duration.between(now, t.getDeadline().getDue()).toHours();
-            if (hoursLeft >= 0 && hoursLeft <= onlyUpcomingWithinHours) {
-                filtered.add(t);
-            }
+            if (hoursLeft >= 0 && hoursLeft <= onlyUpcomingWithinHours) filtered.add(t);
         }
+
         filtered.sort(Comparator.comparing(x -> x.getDeadline().getDue()));
 
         if (limit > 0 && filtered.size() > limit) {
@@ -234,16 +252,15 @@ public class ProjectManager {
         return filtered;
     }
 
-
-    public List<Task> runReminders(String projectId, long withinMinutes) {
-        Project project = getProjectById(projectId);
+    public List<Task> runReminders(String projectIdOrName, long withinMinutes) {
+        Project project = getProjectByIdOrName(projectIdOrName);
         return reminderService.getTasksToRemind(project.getTasks(), withinMinutes);
     }
 
     /* ===================== CSV EXPORT / IMPORT ===================== */
 
-    public String exportProjectAsCSV(String projectId) {
-        Project project = getProjectById(projectId);
+    public String exportProjectAsCSV(String projectIdOrName) {
+        Project project = getProjectByIdOrName(projectIdOrName);
 
         StringBuilder sb = new StringBuilder();
         sb.append("title,priority,deadline,completed\n");
@@ -259,10 +276,10 @@ public class ProjectManager {
         return sb.toString();
     }
 
-    public Path exportProjectCSVToFile(String projectId, String filePath) throws IOException {
+    public Path exportProjectCSVToFile(String projectIdOrName, String filePath) throws IOException {
         if (filePath == null || filePath.isBlank()) throw new IllegalArgumentException("filePath boş olamaz.");
 
-        String csv = exportProjectAsCSV(projectId);
+        String csv = exportProjectAsCSV(projectIdOrName);
         Path path = Path.of(filePath);
 
         if (path.getParent() != null && !Files.exists(path.getParent())) {
@@ -286,10 +303,10 @@ public class ProjectManager {
         public int getSkipped() { return skipped; }
     }
 
-    public ImportResult importTasksFromCSV(String projectId, String filePath) throws IOException {
+    public ImportResult importTasksFromCSV(String projectIdOrName, String filePath) throws IOException {
         if (filePath == null || filePath.isBlank()) throw new IllegalArgumentException("CSV dosya yolu boş olamaz.");
 
-        Project project = getProjectById(projectId);
+        Project project = getProjectByIdOrName(projectIdOrName);
         Path path = Path.of(filePath);
 
         if (!Files.exists(path)) throw new IllegalArgumentException("CSV dosyası bulunamadı: " + path.toAbsolutePath());
