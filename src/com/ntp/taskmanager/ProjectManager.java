@@ -1,5 +1,9 @@
 package com.ntp.taskmanager;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -85,15 +89,11 @@ public class ProjectManager {
     }
 
     /**
+     * Projeye ait tüm görevleri döndürür.
      * completedFilter:
      * - null  => tüm görevler
      * - true  => sadece tamamlananlar
      * - false => sadece tamamlanmayanlar
-     *
-     * Sıralama:
-     * 1) Tamamlanmayanlar önce
-     * 2) Öncelik (YUKSEK->DUSUK)
-     * 3) Deadline (en yakın önce)
      */
     public List<Task> listProjectTasks(String projectId, Boolean completedFilter) {
         Project project = getProjectById(projectId);
@@ -108,7 +108,7 @@ public class ProjectManager {
         }
 
         result.sort(
-                Comparator.comparing(Task::isCompleted) // false (tamamlanmayan) önce
+                Comparator.comparing(Task::isCompleted) // false önce
                         .thenComparing(
                                 Comparator.comparing(Task::getPriority,
                                         Comparator.comparingInt(Priority::getLevel)).reversed()
@@ -130,6 +130,30 @@ public class ProjectManager {
               .append(t.isCompleted()).append("\n");
         }
         return sb.toString();
+    }
+
+    /**
+     *
+     * @param projectId proje id
+     * @param filePath kaydedilecek dosya yolu (örn: C:\temp\project.csv)
+     * @return kaydedilen dosyanın Path değeri
+     */
+    public Path exportProjectCSVToFile(String projectId, String filePath) throws IOException {
+        if (filePath == null || filePath.isBlank()) {
+            throw new IllegalArgumentException("filePath boş olamaz.");
+        }
+
+        String csv = exportProjectAsCSV(projectId);
+        Path path = Path.of(filePath);
+
+        
+        Path parent = path.getParent();
+        if (parent != null && !Files.exists(parent)) {
+            Files.createDirectories(parent);
+        }
+
+        Files.writeString(path, csv, StandardCharsets.UTF_8);
+        return path;
     }
 
     private String escape(String s) {

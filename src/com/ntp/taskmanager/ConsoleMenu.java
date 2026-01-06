@@ -1,5 +1,6 @@
 package com.ntp.taskmanager;
 
+import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -26,7 +27,8 @@ public class ConsoleMenu {
             System.out.println("5) Görev tamamla");
             System.out.println("6) Yaklaşan görevleri listele");
             System.out.println("7) Projeyi CSV olarak yazdır");
-            System.out.println("8) Projedeki tüm görevleri listele"); // ✅ Commit 7
+            System.out.println("8) Projedeki tüm görevleri listele");
+            System.out.println("9) CSV'yi dosyaya kaydet"); // ✅ Commit 8
             System.out.println("0) Çıkış");
             System.out.print("Seçim: ");
 
@@ -41,7 +43,8 @@ public class ConsoleMenu {
                     case "5" -> completeTask();
                     case "6" -> listUpcoming();
                     case "7" -> exportCsv();
-                    case "8" -> listAllProjectTasks(); // ✅ Commit 7
+                    case "8" -> listAllProjectTasks();
+                    case "9" -> exportCsvToFile(); // ✅ Commit 8
                     case "0" -> {
                         System.out.println("Çıkış yapıldı.");
                         return;
@@ -87,7 +90,6 @@ public class ConsoleMenu {
         String desc = sc.nextLine().trim();
 
         Priority pr = readPriority();
-
         LocalDateTime due = readDateTime("Deadline (yyyy-MM-dd H:mm): ");
 
         if ("2".equals(type)) {
@@ -171,6 +173,17 @@ public class ConsoleMenu {
             String status = t.isCompleted() ? "✅ Tamamlandı" : "🟡 Devam ediyor";
             System.out.println(status + " | " + t);
         }
+    }
+
+    private void exportCsvToFile() throws Exception {
+        System.out.print("Project ID: ");
+        String projectId = sc.nextLine().trim();
+
+        System.out.print("Dosya yolu (örn: C:\\temp\\project.csv): ");
+        String path = sc.nextLine().trim();
+
+        Path saved = pm.exportProjectCSVToFile(projectId, path);
+        System.out.println("CSV kaydedildi: " + saved.toAbsolutePath());
     }
 
     private Priority readPriority() {
