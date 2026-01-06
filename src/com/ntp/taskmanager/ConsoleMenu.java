@@ -28,6 +28,7 @@ public class ConsoleMenu {
             System.out.println("8) Projedeki tüm görevleri listele");
             System.out.println("9) CSV'yi dosyaya kaydet");
             System.out.println("10) CSV'den görevleri yükle");
+            System.out.println("11) Task detay görüntüle (ID ile)"); 
             System.out.println("0) Çıkış");
             System.out.print("Seçim: ");
 
@@ -44,7 +45,8 @@ public class ConsoleMenu {
                     case "7" -> exportCsv();
                     case "8" -> listAllProjectTasks();
                     case "9" -> exportCsvToFile();
-                    case "10" -> importCsvFromFile(); 
+                    case "10" -> importCsvFromFile();
+                    case "11" -> showTaskDetails(); 
                     case "0" -> {
                         System.out.println("Çıkış yapıldı.");
                         return;
@@ -96,15 +98,15 @@ public class ConsoleMenu {
             LocalDateTime start = readDateTime("Start (yyyy-MM-dd H:mm): ");
             LocalDateTime end = readDateTime("End (yyyy-MM-dd H:mm): ");
             TimedTask t = pm.createTimedTask(title, desc, due, pr, start, end);
-            System.out.println("TimedTask oluşturuldu. ID: " + t.getId());
+            System.out.println("TimedTask oluşturuldu. ID: " + t.getId() + " (kısa: " + t.getShortId() + ")");
         } else {
             Task t = pm.createTask(title, desc, due, pr);
-            System.out.println("Task oluşturuldu. ID: " + t.getId());
+            System.out.println("Task oluşturuldu. ID: " + t.getId() + " (kısa: " + t.getShortId() + ")");
         }
     }
 
     private void assignTaskToProject() {
-        System.out.print("Task ID: ");
+        System.out.print("Task ID (tam ID): ");
         String taskId = sc.nextLine().trim();
 
         System.out.print("Project ID: ");
@@ -115,7 +117,7 @@ public class ConsoleMenu {
     }
 
     private void completeTask() {
-        System.out.print("Tamamlanacak Task ID: ");
+        System.out.print("Tamamlanacak Task ID (tam ID): ");
         String taskId = sc.nextLine().trim();
         pm.completeTask(taskId);
         System.out.println("Görev tamamlandı.");
@@ -135,7 +137,7 @@ public class ConsoleMenu {
         }
         System.out.println("--- Yaklaşan Görevler ---");
         for (Task t : upcoming) {
-            System.out.println(Notification.upcoming(t));
+            System.out.println("ID: " + t.getId() + " | " + Notification.upcoming(t));
         }
     }
 
@@ -171,7 +173,11 @@ public class ConsoleMenu {
         System.out.println("--- Görevler ---");
         for (Task t : list) {
             String status = t.isCompleted() ? "✅ Tamamlandı" : "🟡 Devam ediyor";
-            System.out.println(status + " | " + t);
+            System.out.println(status
+                    + " | ID: " + t.getId()
+                    + " | " + t.getTitle()
+                    + " | Öncelik: " + t.getPriority().getLabel()
+                    + " | Deadline: " + t.getDeadline().getDue());
         }
     }
 
@@ -186,7 +192,6 @@ public class ConsoleMenu {
         System.out.println("CSV kaydedildi: " + saved.toAbsolutePath());
     }
 
-    // 
     private void importCsvFromFile() throws Exception {
         System.out.print("Project ID: ");
         String projectId = sc.nextLine().trim();
@@ -196,6 +201,31 @@ public class ConsoleMenu {
 
         ProjectManager.ImportResult result = pm.importTasksFromCSV(projectId, path);
         System.out.println("İçe aktarma tamamlandı. Eklenen: " + result.getAdded() + " | Atlanan: " + result.getSkipped());
+    }
+
+    
+    private void showTaskDetails() {
+        System.out.print("Task ID (tam ID): ");
+        String taskId = sc.nextLine().trim();
+
+        Task t = pm.getTaskById(taskId);
+
+        System.out.println("\n--- TASK DETAY ---");
+        System.out.println("ID: " + t.getId());
+        System.out.println("Başlık: " + t.getTitle());
+        System.out.println("Açıklama: " + (t.getDescription() == null ? "" : t.getDescription()));
+        System.out.println("Öncelik: " + t.getPriority().getLabel());
+        System.out.println("Deadline: " + t.getDeadline().getDue());
+        System.out.println("Durum: " + (t.isCompleted() ? "✅ Tamamlandı" : "🟡 Devam ediyor"));
+
+        if (t instanceof TimedTask tt) {
+            System.out.println("Tür: TimedTask");
+            System.out.println("Start: " + tt.getStart());
+            System.out.println("End: " + tt.getEnd());
+        } else {
+            System.out.println("Tür: Task");
+        }
+        System.out.println("--------------");
     }
 
     private Priority readPriority() {

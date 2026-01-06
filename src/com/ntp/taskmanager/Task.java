@@ -30,7 +30,14 @@ public class Task implements Completable {
         this.completed = false;
     }
 
-    public String getId() { return id; }
+    public String getId() {
+        return id;
+    }
+
+    /** Listelerde kolay kopyalama için kısa ID (ilk 8 karakter). */
+    public String getShortId() {
+        return id.length() >= 8 ? id.substring(0, 8) : id;
+    }
 
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = Objects.requireNonNull(title); }
@@ -53,7 +60,7 @@ public class Task implements Completable {
     @Override
     public String toString() {
         return "Task{" +
-                "id='" + id.substring(0, 8) + '\'' +
+                "id='" + getShortId() + '\'' +
                 ", title='" + title + '\'' +
                 ", priority=" + priority.getLabel() +
                 ", deadline=" + deadline +
