@@ -3,6 +3,9 @@ package com.ntp.taskmanager;
 import java.time.LocalDateTime;
 import java.util.*;
 
+/**
+ * Proje ve görevlerin yönetiminden sorumlu servis sınıfıdır.
+ */
 public class ProjectManager {
     private final Map<String, Project> projects = new HashMap<>();
     private final Map<String, Task> tasks = new HashMap<>();
@@ -26,7 +29,6 @@ public class ProjectManager {
         return t;
     }
 
-  
     public Collection<Project> getAllProjects() {
         return Collections.unmodifiableCollection(projects.values());
     }
@@ -43,7 +45,6 @@ public class ProjectManager {
         return t;
     }
 
-    
     public void assignTaskToProject(String taskId, String projectId) {
         Task task = getTaskById(taskId);
         Project project = getProjectById(projectId);
@@ -55,17 +56,32 @@ public class ProjectManager {
         t.complete();
     }
 
-    
+    /**
+     * Yaklaşan görevleri listeler:
+     * - Tamamlananları dışarıda bırakır
+     * - Süresi geçmiş (overdue) olanları dışarıda bırakır
+     * - Önce öncelik (YUKSEK->DUSUK), sonra deadline (en yakın önce) sıralar
+     */
     public List<Task> listUpcomingTasks(String projectId, long withinHours) {
         Project project = getProjectById(projectId);
 
         List<Task> result = new ArrayList<>();
         for (Task t : project.getTasks()) {
-            if (!t.isCompleted() && t.getDeadline().isWithinHours(withinHours)) {
+            if (t.isCompleted()) continue;
+            if (t.getDeadline().isOverdue()) continue; // ✅ overdue filtre
+            if (t.getDeadline().isWithinHours(withinHours)) {
                 result.add(t);
             }
         }
-        result.sort(Comparator.comparing(Task::getPriority).reversed());
+
+        // ✅ Sıralama: önce priority, sonra deadline
+        result.sort(
+                Comparator.comparing(Task::getPriority,
+                                Comparator.comparingInt(Priority::getLevel)) // level: 1-2-3
+                        .reversed()
+                        .thenComparing(t -> t.getDeadline().getDue())
+        );
+
         return result;
     }
 
