@@ -30,6 +30,7 @@ public class ConsoleMenu {
             System.out.println("9) CSV'yi dosyaya kaydet");
             System.out.println("10) CSV'den görevleri yükle");
             System.out.println("11) Task detay görüntüle (ID / kısa ID)");
+            System.out.println("12) Task sil (ID / kısa ID)"); 
             System.out.println("0) Çıkış");
             System.out.print("Seçim: ");
 
@@ -48,6 +49,7 @@ public class ConsoleMenu {
                     case "9" -> exportCsvToFile();
                     case "10" -> importCsvFromFile();
                     case "11" -> showTaskDetails();
+                    case "12" -> deleteTask(); 
                     case "0" -> {
                         System.out.println("Çıkış yapıldı.");
                         return;
@@ -233,6 +235,23 @@ public class ConsoleMenu {
             System.out.println("Tür: Task");
         }
         System.out.println("--------------");
+    }
+
+    
+    private void deleteTask() {
+        System.out.print("Silinecek Task ID veya kısa ID: ");
+        String idOrShort = sc.nextLine().trim();
+
+        System.out.print("Emin misin? (E/H): ");
+        String confirm = sc.nextLine().trim().toUpperCase();
+
+        if (!"E".equals(confirm)) {
+            System.out.println("İptal edildi.");
+            return;
+        }
+
+        String deletedId = pm.deleteTask(idOrShort);
+        System.out.println("Task silindi. ID: " + deletedId);
     }
 
     private Priority readPriority() {

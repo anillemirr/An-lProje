@@ -46,16 +46,22 @@ public class ProjectManager {
         return p;
     }
 
+    /** Tam ID ile. */
+    public Task getTaskById(String taskId) {
+        Task t = tasks.get(taskId);
+        if (t == null) throw new IllegalArgumentException("Task not found: " + taskId);
+        return t;
+    }
+
+    
     public Task getTaskByIdOrShortId(String idOrShort) {
         if (idOrShort == null || idOrShort.isBlank()) {
             throw new IllegalArgumentException("Task ID boş olamaz.");
         }
 
-        // Önce tam ID dene
         Task direct = tasks.get(idOrShort);
         if (direct != null) return direct;
 
-        // Kısa ID ile ara
         List<Task> matches = new ArrayList<>();
         for (Task t : tasks.values()) {
             if (t.getShortId().equalsIgnoreCase(idOrShort)) {
@@ -67,15 +73,9 @@ public class ProjectManager {
             throw new IllegalArgumentException("Task bulunamadı: " + idOrShort);
         }
         if (matches.size() > 1) {
-            throw new IllegalArgumentException("Kısa ID birden fazla task ile eşleşti.");
+            throw new IllegalArgumentException("Kısa ID birden fazla task ile eşleşti. Tam ID kullan.");
         }
         return matches.get(0);
-    }
-
-    public Task getTaskById(String taskId) {
-        Task t = tasks.get(taskId);
-        if (t == null) throw new IllegalArgumentException("Task not found: " + taskId);
-        return t;
     }
 
     public void assignTaskToProject(String taskIdOrShortId, String projectId) {
@@ -87,6 +87,27 @@ public class ProjectManager {
     public void completeTask(String taskIdOrShortId) {
         Task t = getTaskByIdOrShortId(taskIdOrShortId);
         t.complete();
+    }
+
+    /**
+     * - Global task havuzundan siler
+     * - Tüm projelerden kaldırır
+     *
+     * @return silinen task'ın tam ID'si (log/ekrana basmak için)
+     */
+    public String deleteTask(String taskIdOrShortId) {
+        Task t = getTaskByIdOrShortId(taskIdOrShortId);
+        String fullId = t.getId();
+
+        // tüm projelerden kaldırır
+        for (Project p : projects.values()) {
+            p.removeTaskById(fullId);
+        }
+
+        // global havuzdan kaldırır
+        tasks.remove(fullId);
+
+        return fullId;
     }
 
     /* ===================== LISTING ===================== */
@@ -107,8 +128,9 @@ public class ProjectManager {
                 Comparator.comparing(Task::getPriority,
                                 Comparator.comparingInt(Priority::getLevel))
                         .reversed()
-                        .thenComparing(t -> t.getDeadline().getDue())
+                        .thenComparing(x -> x.getDeadline().getDue())
         );
+
         return result;
     }
 
@@ -128,8 +150,9 @@ public class ProjectManager {
                                 Comparator.comparing(Task::getPriority,
                                         Comparator.comparingInt(Priority::getLevel)).reversed()
                         )
-                        .thenComparing(t -> t.getDeadline().getDue())
+                        .thenComparing(x -> x.getDeadline().getDue())
         );
+
         return result;
     }
 
@@ -137,7 +160,9 @@ public class ProjectManager {
 
     public String exportProjectAsCSV(String projectId) {
         Project project = getProjectById(projectId);
-        StringBuilder sb = new StringBuilder("title,priority,deadline,completed\n");
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("title,priority,deadline,completed\n");
 
         for (Task t : project.getTasks()) {
             sb.append(CsvUtil.escape(t.getTitle())).append(",")
@@ -146,10 +171,15 @@ public class ProjectManager {
               .append(CsvUtil.escape(Boolean.toString(t.isCompleted())))
               .append("\n");
         }
+
         return sb.toString();
     }
 
     public Path exportProjectCSVToFile(String projectId, String filePath) throws IOException {
+        if (filePath == null || filePath.isBlank()) {
+            throw new IllegalArgumentException("filePath boş olamaz.");
+        }
+
         String csv = exportProjectAsCSV(projectId);
         Path path = Path.of(filePath);
 
@@ -161,46 +191,7 @@ public class ProjectManager {
         return path;
     }
 
-    public ImportResult importTasksFromCSV(String projectId, String filePath) throws IOException {
-        Project project = getProjectById(projectId);
-        Path path = Path.of(filePath);
-
-        List<String> lines = Files.readAllLines(path, StandardCharsets.UTF_8);
-        int added = 0, skipped = 0;
-
-        Set<String> keys = new HashSet<>();
-        for (Task t : project.getTasks()) {
-            keys.add(t.getTitle().toLowerCase() + "||" + t.getDeadline().getDue());
-        }
-
-        for (int i = 1; i < lines.size(); i++) {
-            List<String> parts = CsvUtil.parseLine(lines.get(i));
-            if (parts.size() < 4) continue;
-
-            String title = parts.get(0);
-            Priority pr = Priority.valueOf(parts.get(1));
-            LocalDateTime dl = LocalDateTime.parse(parts.get(2));
-            boolean completed = Boolean.parseBoolean(parts.get(3));
-
-            String key = title.toLowerCase() + "||" + dl;
-            if (keys.contains(key)) {
-                skipped++;
-                continue;
-            }
-
-            Task t = new Task(title, "", new Deadline(dl), pr);
-            if (completed) t.complete();
-
-            tasks.put(t.getId(), t);
-            project.addTask(t);
-            keys.add(key);
-            added++;
-        }
-        return new ImportResult(added, skipped);
-    }
-
-    /* ===================== IMPORT RESULT ===================== */
-
+    /** Import sonucu: kaç eklendi / kaç atlandı. */
     public static class ImportResult {
         private final int added;
         private final int skipped;
@@ -212,5 +203,68 @@ public class ProjectManager {
 
         public int getAdded() { return added; }
         public int getSkipped() { return skipped; }
+    }
+
+    /**
+     * CSV dosyasından görevleri okuyup belirtilen projeye ekler.
+     * Duplicate kuralı: aynı projede aynı title + aynı deadline varsa eklemez.
+     */
+    public ImportResult importTasksFromCSV(String projectId, String filePath) throws IOException {
+        if (filePath == null || filePath.isBlank()) {
+            throw new IllegalArgumentException("CSV dosya yolu boş olamaz.");
+        }
+
+        Project project = getProjectById(projectId);
+        Path path = Path.of(filePath);
+
+        if (!Files.exists(path)) {
+            throw new IllegalArgumentException("CSV dosyası bulunamadı: " + path.toAbsolutePath());
+        }
+
+        Set<String> existingKeys = new HashSet<>();
+        for (Task t : project.getTasks()) {
+            existingKeys.add(makeKey(t.getTitle(), t.getDeadline().getDue()));
+        }
+
+        List<String> lines = Files.readAllLines(path, StandardCharsets.UTF_8);
+        if (lines.isEmpty()) return new ImportResult(0, 0);
+
+        int added = 0;
+        int skipped = 0;
+
+        for (int i = 1; i < lines.size(); i++) { // header atla
+            String line = lines.get(i).trim();
+            if (line.isEmpty()) continue;
+
+            List<String> parts = CsvUtil.parseLine(line);
+            if (parts.size() < 4) continue;
+
+            String title = parts.get(0);
+            Priority priority = Priority.valueOf(parts.get(1));
+            LocalDateTime deadline = LocalDateTime.parse(parts.get(2));
+            boolean completed = Boolean.parseBoolean(parts.get(3));
+
+            String key = makeKey(title, deadline);
+            if (existingKeys.contains(key)) {
+                skipped++;
+                continue;
+            }
+
+            Task task = new Task(title, "", new Deadline(deadline), priority);
+            if (completed) task.complete();
+
+            tasks.put(task.getId(), task);
+            project.addTask(task);
+
+            existingKeys.add(key);
+            added++;
+        }
+
+        return new ImportResult(added, skipped);
+    }
+
+    private String makeKey(String title, LocalDateTime deadline) {
+        String t = (title == null) ? "" : title.trim().toLowerCase();
+        return t + "||" + deadline.toString();
     }
 }
